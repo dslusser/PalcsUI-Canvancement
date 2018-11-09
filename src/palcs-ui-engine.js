@@ -38,7 +38,8 @@ var PalcsUI = function(config) {
       'nextAfterUpdate' : true,
       'nextAfterComment' : true,
       'nextAfterRubric' : true,
-      'nextRubricExpanded' : true
+      'nextRubricExpanded' : true,
+      'addGradePercentage' : true
     };
   }
 
@@ -57,6 +58,7 @@ var PalcsUI = function(config) {
       addObservers();
       addNextComment();
       addNextRubric();
+      addGradePercentage();
     } else if (/^\/courses\/[0-9]+\/quizzes\/[0-9]+\/history$/.test(window.location.pathname)) {
       isQuiz = true;
       quizFeatures();
@@ -401,6 +403,106 @@ var PalcsUI = function(config) {
       }
     }
   }
+
+
+
+
+
+/************************************* */
+/* DWS Enhancements */
+
+function addGradePercentage() {
+    if (typeof config.addGradePercentage !== 'undefined' && !config.addGradePercentage) {
+      return;
+    }
+    
+    
+    $(document).ajaxStop(function () { 
+      //var students_selectmenu = document.getElementById("students_selectmenu");
+    //students_selectmenu.addEventListener("change", showGradePercentage);
+      showGradePercentage();
+      
+  });
+  
+  //Globals for Speed Grader and msisNav functions
+  var getURLArray = document.URL.split(/\?(.+)?/)[0];
+  var parseURL = getURLArray.split('/');
+  var speed_grader = parseURL[6];
+  var header = document.getElementById('header');
+  
+  $(document).ready(function(){setupPercentContainers()});
+  window.onload = showGradePercentage();
+  //window.onload = setupPercentContainers();
+  //$(window).on('load', setupPercentContainers);
+  //$(document).ready(function(){setupPercentContainers()});
+  //$(window).on( "load", function() { showGradePercentage(); });
+  //$('#update_history_form').on( 'submit', function() { setTimeout(function(){showGradePercentage();},2000) });
+  //$('#students_selectmenu').on( 'keyup blur keypress change', showGradePercentage);
+  //$("body").on('DOMSubtreeModified', "#x_of_x_students_frd", function() {console.log('changed') });
+  
+  function setupPercentContainers() {
+  
+      if (speed_grader == 'speed_grader') {
+  
+          var pointValue = document.createElement('div');
+          pointValue.id = 'pointValue';
+          
+          var grade_container = document.getElementById('grade_container');
+          grade_container.appendChild(pointValue);
+  
+          var pointPercentNumber = document.createElement('span');
+          pointPercentNumber.id = 'pointPercentNumber';        
+          pointPercentNumber.innerHTML = '';
+  
+          pointValue.appendChild(pointPercentNumber);
+  
+          //var gradingBoxExtended = document.getElementById("grading-box-extended");
+          //gradingBoxExtended.addEventListener("change", showGradePercentage);
+          
+          //var students_selectmenu = document.getElementById("students_selectmenu");
+      //students_selectmenu.addEventListener("change", showGradePercentage);
+      
+      //$('#students_selectmenu').on( 'keyup blur keypress change click mousedown', showGradePercentage);
+      
+      $('#grading-box-extended').on('keyup blur keypress change', showGradePercentage);
+      $('#next-student-button').on('click mousedown', showGradePercentage);
+      $('#prev-student-button').on('click mousedown', showGradePercentage);
+      }
+  }
+  
+  function showGradePercentage() {
+  
+      if (speed_grader == 'speed_grader') {
+  
+          var studentGrade = parseFloat(document.getElementById('grading-box-extended').value, 10);
+          var assignmentValue = parseFloat(document.getElementById('grade_container').innerText.split(/(\d+)/g)[1], 10);
+          var rawGradePercent = studentGrade / assignmentValue;
+          var gradePercent = (rawGradePercent * 100).toFixed(2) + ' %';
+          
+          if (isNaN(rawGradePercent)) {
+  
+              pointPercentNumber.innerHTML = '0 %';
+  
+          } else {
+              
+          pointPercentNumber.innerHTML = gradePercent;
+  
+          }
+      }
+  }
+
+
+
+
+
+  }
+
+
+
+
+
+
+  /********************************* */
 
   function autoExpandComments() {
     if (typeof config.autoExpandComments !== 'undefined' && !config.autoExpandComments) {

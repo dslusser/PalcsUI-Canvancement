@@ -25,11 +25,12 @@
     // Speed enhancements may be true or false
     'autoExpandComments' : false,
     'duplicateQuestionHeader' : false,
-    'showButtonCounts' : true,
+    'showButtonCounts' : false,
     'nextAfterUpdate' : false,
     'nextAfterComment' : false,
     'nextAfterRubric' : false,
-    'nextRubricExpanded' : false
+    'nextRubricExpanded' : false,
+    'addGradePercentage' : true
   };
 
   $.ajax({
