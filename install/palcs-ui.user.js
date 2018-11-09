@@ -34,7 +34,7 @@
   };
 
   $.ajax({
-    'url' : 'https://gitcdn.link/repo/jamesjonesmath/canvancement/master/quizzes/quizwiz/src/qw-engine.js',
+    'url' : 'https://gitcdn.link/repo/dslusser/PalcsUI-Canvancement/master/src/palcs-ui-engine.js',
     'dataType' : 'script',
     'cache' : true,
     'success' : function() {
