@@ -17,11 +17,8 @@
 var PalcsUI = function(config) {
   'use strict';
   if (typeof config === 'undefined') {
-    // Each regrading method has three possible options:
-    // disabled -- do not use this method
-    // enabled -- use this method
-    // autorun -- use this method and automatically run it
-    config = {
+    /* Original default config from QuizWiz */
+    /*config = {
       'methods' : {
         'unanswered' : 'autorun',
         'full_points' : 'disabled',
@@ -38,7 +35,31 @@ var PalcsUI = function(config) {
       'nextAfterUpdate' : true,
       'nextAfterComment' : true,
       'nextAfterRubric' : true,
-      'nextRubricExpanded' : true,
+      'nextRubricExpanded' : true
+    };*/
+
+    // Each regrading method has three possible options:
+    // disabled -- do not use this method
+    // enabled -- use this method
+    // autorun -- use this method and automatically run it
+    config = {
+      'methods' : {
+        'unanswered' : 'disabled',
+        'full_points' : 'disabled',
+        'ma_allnone' : 'disabled',
+        'ma_correct' : 'disabled',
+        'ma_difference' : 'disabled',
+        'fill_in_blanks' : 'disabled',
+        'dropdowns' : 'disabled'
+      },
+      // Speed enhancements may be true or false
+      'autoExpandComments' : false,
+      'duplicateQuestionHeader' : false,
+      'showButtonCounts' : false,
+      'nextAfterUpdate' : false,
+      'nextAfterComment' : false,
+      'nextAfterRubric' : false,
+      'nextRubricExpanded' : false,
       'addGradePercentage' : true
     };
   }
@@ -430,7 +451,7 @@ function addGradePercentage() {
   var speed_grader = parseURL[6];
   var header = document.getElementById('header');
   
-  $(document).ready(function(){setupPercentContainers()});
+  $(document).ready(function(){setupPercentContainers();});
   window.onload = showGradePercentage();
   //window.onload = setupPercentContainers();
   //$(window).on('load', setupPercentContainers);

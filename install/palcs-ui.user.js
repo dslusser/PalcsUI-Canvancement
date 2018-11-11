@@ -1,5 +1,5 @@
 // ==UserScript==
-// @name        PalcsUI
+// @name        PalcsUI Canvancement
 // @namespace   https://github.com/dslusser/PalcsUI-Canvancement
 // @description User enhancements for the Palcs Canvas instance
 // @include     https://*.instructure.com/courses/*/gradebook/speed_grader?*
