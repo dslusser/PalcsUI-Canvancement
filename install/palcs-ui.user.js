@@ -5,31 +5,14 @@
 // @include     https://*.instructure.com/courses/*/gradebook/speed_grader?*
 // @include     https://*.instructure.com/courses/*/quizzes/*/history?*
 // @noframes
-// @version     1.00
+// @version     1.01
 // @grant       none
 // ==/UserScript==
 (function() {
   'use strict';
 
   var config = {
-    // Regrading methods may be 'disabled', 'enabled', or 'autorun'
-    'methods' : {
-      'unanswered' : 'disabled',
-      'full_points' : 'disabled',
-      'ma_allnone' : 'disabled',
-      'ma_correct' : 'disabled',
-      'ma_difference' : 'disabled',
-      'fill_in_blanks' : 'disabled',
-      'dropdowns' : 'disabled'
-    },
-    // Speed enhancements may be true or false
-    'autoExpandComments' : false,
-    'duplicateQuestionHeader' : false,
-    'showButtonCounts' : false,
-    'nextAfterUpdate' : false,
-    'nextAfterComment' : false,
-    'nextAfterRubric' : false,
-    'nextRubricExpanded' : false,
+    // PalcsUI enhancements may be true or false
     'addGradePercentage' : true
   };
 
