@@ -60,20 +60,38 @@ var PalcsUI = function(config) {
       'nextAfterComment' : false,
       'nextAfterRubric' : false,
       'nextRubricExpanded' : false,
-      'addGradePercentage' : true
+      'addGradePercentage' : true,
+      'addCustomCSS' : true,
+      'boxResizerCSS' : true,
+      'gradebookTooltipCSS' : true,
+      'keyframesHolderCSS' : true,
+      'addMsisNavigation' : true
     };
   }
 
   var namespace = 'palcsui';
   var isSG = false;
   var isQuiz = document.body.classList.contains('quizzes');
+  var isCanvas = false;
   var QT;
   var D = document;
   var advanceUser = false;
   var advanceSrc = false;
   var advanceRubric = false;
 
-  try {
+  if (/^.*\.instructure\.com$/.test(window.location.host)) {
+    isCanvas = true;
+    //console.log(isCanvas + ', yes this is canvas');
+    addCustomCSS();
+  } 
+
+  if (/^\/courses\/[0-9]+\/gradebook\/speed_grader$/.test(window.location.pathname)) {
+      //console.log('we are at speed_grader');
+      addGradePercentage();
+  } 
+  
+
+  /*try {
     if (/^\/courses\/[0-9]+\/gradebook\/speed_grader$/.test(window.location.pathname)) {
       isSG = true;
       addObservers();
@@ -86,7 +104,8 @@ var PalcsUI = function(config) {
     }
   } catch (e) {
     console.log(e);
-  }
+  }*/
+  
 
   function quizFeatures() {
     setupInterface();
@@ -436,7 +455,7 @@ function addGradePercentage() {
     if (typeof config.addGradePercentage !== 'undefined' && !config.addGradePercentage) {
       return;
     }
-    
+    //console.log('addGradePercentage() is running');
     
     $(document).ajaxStop(function () { 
       //var students_selectmenu = document.getElementById("students_selectmenu");
@@ -512,17 +531,226 @@ function addGradePercentage() {
       }
   }
 
+}
 
 
 
-
+function addCustomCSS() {
+  if (typeof config.addCustomCSS !== 'undefined' && !config.addCustomCSS) {
+    return;
   }
+  //console.log('addCustomCSS() is running');
+  var head = document.getElementsByTagName('head')[0];
+
+  var style = document.createElement('style');
+  style.type = 'text/css';
+  style.id = 'palcsUIcss';
+
+  head.appendChild(style);
+
+  //Globals for Speed Grader and msisNav functions
+  //var getURLArray = document.URL.split(/\?(.+)?/)[0];
+  //var parseURL = getURLArray.split('/');
+  //var speed_grader = parseURL[6];
+  var header = document.getElementById('header');
+
+  function msisNav() {
+    
+    if (header !== null){
+        var menu = document.getElementById('menu');
+
+        var menuMsisItem = document.createElement("li");
+        menuMsisItem.className = "menu-item ic-app-header__menu-list-item";
+        //declared animation fadeIn keyframes in keyframesHolderCSSCode variable
+        menuMsisItem.style.animation = "fadeIn 150ms ease-in";
+
+        var msisNavLink = '\n  <a id=\"global_nav_msis_link\" href=\"https:\/\/www.palcschool.org\/moodle\/sis\/\" target=\"_blank\" class=\"ic-app-header__menu-list-link\">\n    <div class=\"menu-item-icon-container\" aria-hidden=\"true\">\n<svg xmlns=\"http:\/\/www.w3.org\/2000\/svg\" width=\"32\" height=\"32\" viewBox=\"0 0 32 32\"><title>icon-msis</title><path fill=\"#ffffff\" d=\"M28.8,0H3.2A3.11,3.11,0,0,0,0,3V29a3.11,3.11,0,0,0,3.2,3H28.8A3.11,3.11,0,0,0,32,29V3A3.11,3.11,0,0,0,28.8,0ZM27.73,28H4.27V4H27.73ZM8.53,18H23.47v2H8.53Zm0,4H23.47v2H8.53ZM10.67,9a3.11,3.11,0,0,1,3.2-3,3.11,3.11,0,0,1,3.2,3,3.11,3.11,0,0,1-3.2,3A3.11,3.11,0,0,1,10.67,9ZM16,12H11.73c-1.76,0-3.2.9-3.2,2v2H19.2V14C19.2,12.9,17.76,12,16,12Z\"></path></svg>\n<span class=\"menu-item__badge\" style=\"display: none\">0</span>\n    </div>\n    <div class=\"menu-item__text\">\n      MSIS\n</div>\n  </a>\n';
+
+
+
+        menuMsisItem.innerHTML = msisNavLink;
+        menu.appendChild(menuMsisItem);
+    }
+  
+}
+
+//TODO: ADD POWERSCHOOL NAV @ https://palcs.powerschool.com/admin/home.html
+
+  
+
+    function addPalcsuiStyle(css){
+
+      var D = document.getElementById('palcsUIcss');
+      D.append(css);
+
+    }
+
+    var boxResizerCSSCode = `
+  #assignment_description {
+      min-height: 600px !important;
+  }
+  
+  #assignment_description_ifr {
+      min-height: 600px !important;
+  }
+  
+  #quiz_description {
+      min-height: 600px !important;
+      width: 100% !important;
+  }
+  
+  #quiz_description_ifr {
+      min-height: 600px !important;
+  }
+  
+  #quiz_options_form {
+      padding-right: 20px !important;
+  }
+  
+  #speed_grader_comment_textarea {
+      min-height: 150px !important;
+      overflow-y: scroll !important;
+  }
+  
+  #wiki_page_body {
+      min-height: 600px !important;
+  }
+  
+  #wiki_page_body_ifr {
+      min-height: 600px !important;
+  }
+  
+  .quiz_comment {
+      height: 150px !important;
+      width: 75% !important;
+  }
+  
+  .quiz_comment textarea {
+      height: 100px !important;
+      width: 97% !important;
+  }
+  
+  div.description.user_content.teacher-version.enhanced {
+      height: auto !important;
+  }
+  
+  iframe[id^="discussion-topic-message"][id*="_ifr"] {
+      min-height: 600px !important;
+  }
+  
+  iframe[id^="editor-toggle-"][id*="_ifr"] {
+      min-height: 600px !important;
+  }
+  
+  textarea[id^="discussion-topic-message"] {
+      min-height: 600px !important;
+  }
+  
+  textarea[id^="editor-toggle-"] {
+      min-height: 600px !important;
+  }
+  
+  #courses_list .unstyled_list.context_list {
+    max-height: inherit !important;
+  }`;
+
+  var gradebookTooltipCSSCode = `
+  .gradebook-tooltip {
+    display: none !important;
+  }`;
+
+  var keyframesHolderCSSCode = `
+  @-moz-keyframes fadeIn {
+    0% {
+      -webkit-opacity: 0;
+      opacity: 0;
+    }
+    100% {
+      -webkit-opacity: 1;
+      opacity: 1;
+    }
+  }
+  
+  @-webkit-keyframes fadeIn {
+    0% {
+      -webkit-opacity: 0;
+      opacity: 0;
+    }
+    100% {
+      -webkit-opacity: 1;
+      opacity: 1;
+    }
+  }
+  
+  @-ms-keyframes fadeIn {
+    0% {
+      -webkit-opacity: 0;
+      opacity: 0;
+    }
+    100% {
+      -webkit-opacity: 1;
+      opacity: 1;
+    }
+  }
+  
+  @-o-keyframes fadeIn {
+    0% {
+      -webkit-opacity: 0;
+      opacity: 0;
+    }
+    100% {
+      -webkit-opacity: 1;
+      opacity: 1;
+    }
+  }
+  
+  @keyframes fadeIn {
+    0% {
+      -webkit-opacity: 0;
+      opacity: 0;
+    }
+    100% {
+      -webkit-opacity: 1;
+      opacity: 1;
+    }
+  }`;
+
+    if (typeof config.boxResizerCSS !== 'undefined' && !config.boxResizerCSS) {
+      return;
+    } else {
+      addPalcsuiStyle(boxResizerCSSCode);
+    }
+
+    if (typeof config.gradebookTooltipCSS !== 'undefined' && !config.gradebookTooltipCSS) {
+      return;
+    } else {
+      addPalcsuiStyle(gradebookTooltipCSSCode);
+    }
+
+    if (typeof config.keyframesHolderCSS !== 'undefined' && !config.keyframesHolderCSS) {
+      return;
+    } else {
+      addPalcsuiStyle(keyframesHolderCSSCode);
+    }
+
+    if (typeof config.addMsisNavigation !== 'undefined' && !config.addMsisNavigation) {
+      return;
+    } else {
+      msisNav();
+    }
+
+  
+
+  
+
+
+
+}
 
 
 
 
-
-
+  /* END DWS Enhancements */
   /********************************* */
 
   function autoExpandComments() {

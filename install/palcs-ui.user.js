@@ -4,8 +4,9 @@
 // @description User enhancements for the Palcs Canvas instance
 // @include     https://*.instructure.com/courses/*/gradebook/speed_grader?*
 // @include     https://*.instructure.com/courses/*/quizzes/*/history?*
+// @include     https://*.instructure.com/*
 // @noframes
-// @version     1.01
+// @version     1.02
 // @grant       none
 // ==/UserScript==
 (function() {
@@ -13,9 +14,18 @@
 
   var config = {
     // PalcsUI enhancements may be true or false
-    'addGradePercentage' : true
+    'addGradePercentage' : true,
+    'addCustomCSS' : true,
+    'boxResizerCSS' : true,
+    'gradebookTooltipCSS' : true,
+    'keyframesHolderCSS' : true,
+    'addMsisNavigation' : true
   };
 
+  //Gitcdn master palcs-ui-engine.js file
+  //https://gitcdn.link/repo/dslusser/PalcsUI-Canvancement/master/src/palcs-ui-engine.js
+  //Localhost file
+  //http://localhost:8080/palcs-ui-engine.js
   $.ajax({
     'url' : 'https://gitcdn.link/repo/dslusser/PalcsUI-Canvancement/master/src/palcs-ui-engine.js',
     'dataType' : 'script',
