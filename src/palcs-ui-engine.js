@@ -487,8 +487,14 @@ function addGradePercentage() {
           var pointValue = document.createElement('div');
           pointValue.id = 'pointValue';
           
-          var grade_container = document.getElementById('grade_container');
-          grade_container.appendChild(pointValue);
+          //Commented out next 2 lines because of how Chrome now auto-suggests
+          //form field values...it was covering up the grade percentage - moved it
+          //to var grading_box_points_possible which is above grading box now.
+          //var grade_container = document.getElementById('grade_container');
+          //grade_container.appendChild(pointValue);
+
+          var grading_box_points_possible = document.getElementById('grading-box-points-possible');
+          grading_box_points_possible.appendChild(pointValue);
   
           var pointPercentNumber = document.createElement('span');
           pointPercentNumber.id = 'pointPercentNumber';        
