@@ -231,7 +231,7 @@
 
   if (typeof PalcschoolUI !== 'function') {
     const script = document.createElement('script');
-    script.src = 'https://gitcdn.xyz/repo/dslusser/PalcsUI-Canvancement/master/src/palcs-ui-engine.js';
+    script.src = 'https://gitcdn.xyz/repo/dslusser/PalcsUI-Canvancement/master/install/palcschool-ui.user.js';
     script.onload = function() {
       PalcschoolUI(config);
       //console.log('Missing function, loading fallback script.');
