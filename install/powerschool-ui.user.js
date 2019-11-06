@@ -77,7 +77,7 @@
   
     if (typeof PowerSchoolUI !== 'function') {
       const script = document.createElement('script');
-      script.src = 'https://gitcdn.xyz/repo/dslusser/PalcsUI-Canvancement/master/install/palcschool-ui.user.js';
+      script.src = 'https://raw.githubusercontent.com/dslusser/PalcsUI-Canvancement/master/install/powerschool-ui.user.js';
       script.onload = function() {
         PowerSchoolUI(config);
         //console.log('Missing function, loading fallback script.');
