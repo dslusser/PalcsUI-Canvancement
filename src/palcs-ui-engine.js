@@ -742,7 +742,7 @@ function addCustomCSS() {
     }
   }`;
 
-    if (typeof config.boxResizerCSS !== 'undefined' && !config.boxResizerCSS) {
+    /*if (typeof config.boxResizerCSS !== 'undefined' && !config.boxResizerCSS) {
       return;
     } else {
       addPalcsuiStyle(boxResizerCSSCode);
@@ -769,6 +769,29 @@ function addCustomCSS() {
     if (typeof config.addPalcschoolNavigation !== 'undefined' && !config.addPalcschoolNavigation) {
       return;
     } else {
+      palcschoolNav();
+    }*/
+
+
+
+
+    if (typeof config.boxResizerCSS !== 'undefined' && !config.boxResizerCSS) {
+      addPalcsuiStyle(boxResizerCSSCode);
+    }
+
+    if (typeof config.hideGradebookTooltipCSS !== 'undefined' && !config.hideGradebookTooltipCSS) {
+      addPalcsuiStyle(hideGradebookTooltipCSSCode);
+    }
+
+    if (typeof config.keyframesHolderCSS !== 'undefined' && !config.keyframesHolderCSS) {
+      addPalcsuiStyle(keyframesHolderCSSCode);
+    }
+
+    if (typeof config.addMsisNavigation !== 'undefined' && !config.addMsisNavigation) {
+      msisNav();
+    }
+
+    if (typeof config.addPalcschoolNavigation !== 'undefined' && !config.addPalcschoolNavigation) {
       palcschoolNav();
     }
 
