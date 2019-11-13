@@ -775,23 +775,23 @@ function addCustomCSS() {
 
 
 
-    if (typeof config.boxResizerCSS !== 'undefined' && !config.boxResizerCSS) {
+    if (typeof config.boxResizerCSS !== 'undefined' && config.boxResizerCSS !== 'false') {
       addPalcsuiStyle(boxResizerCSSCode);
     }
 
-    if (typeof config.hideGradebookTooltipCSS !== 'undefined' && !config.hideGradebookTooltipCSS) {
+    if (typeof config.hideGradebookTooltipCSS !== 'undefined' && config.hideGradebookTooltipCSS !== 'false') {
       addPalcsuiStyle(hideGradebookTooltipCSSCode);
     }
 
-    if (typeof config.keyframesHolderCSS !== 'undefined' && !config.keyframesHolderCSS) {
+    if (typeof config.keyframesHolderCSS !== 'undefined' && config.keyframesHolderCSS !== 'false') {
       addPalcsuiStyle(keyframesHolderCSSCode);
     }
 
-    if (typeof config.addMsisNavigation !== 'undefined' && !config.addMsisNavigation) {
+    if (typeof config.addMsisNavigation !== 'undefined' && config.addMsisNavigation !== 'false') {
       msisNav();
     }
 
-    if (typeof config.addPalcschoolNavigation !== 'undefined' && !config.addPalcschoolNavigation) {
+    if (typeof config.addPalcschoolNavigation !== 'undefined' && config.addPalcschoolNavigation !== 'false') {
       palcschoolNav();
     }
 
