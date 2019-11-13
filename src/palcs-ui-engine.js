@@ -63,9 +63,10 @@ var PalcsUI = function(config) {
       'addGradePercentage' : true,
       'addCustomCSS' : true,
       'boxResizerCSS' : true,
-      'gradebookTooltipCSS' : true,
+      'hideGradebookTooltipCSS' : true,
       'keyframesHolderCSS' : true,
-      'addMsisNavigation' : true
+      'addMsisNavigation' : false,
+      'addPalcschoolNavigation' : true
     };
   }
 
@@ -570,7 +571,7 @@ function addCustomCSS() {
         //declared animation fadeIn keyframes in keyframesHolderCSSCode variable
         menuMsisItem.style.animation = "fadeIn 150ms ease-in";
 
-        var msisNavLink = '\n  <a id=\"global_nav_msis_link\" href=\"https:\/\/www.palcschool.org\/moodle\/sis\/\" target=\"_blank\" class=\"ic-app-header__menu-list-link\">\n    <div class=\"menu-item-icon-container\" aria-hidden=\"true\">\n<svg xmlns=\"http:\/\/www.w3.org\/2000\/svg\" width=\"32\" height=\"32\" viewBox=\"0 0 32 32\"><title>icon-msis</title><path fill=\"#ffffff\" d=\"M28.8,0H3.2A3.11,3.11,0,0,0,0,3V29a3.11,3.11,0,0,0,3.2,3H28.8A3.11,3.11,0,0,0,32,29V3A3.11,3.11,0,0,0,28.8,0ZM27.73,28H4.27V4H27.73ZM8.53,18H23.47v2H8.53Zm0,4H23.47v2H8.53ZM10.67,9a3.11,3.11,0,0,1,3.2-3,3.11,3.11,0,0,1,3.2,3,3.11,3.11,0,0,1-3.2,3A3.11,3.11,0,0,1,10.67,9ZM16,12H11.73c-1.76,0-3.2.9-3.2,2v2H19.2V14C19.2,12.9,17.76,12,16,12Z\"></path></svg>\n<span class=\"menu-item__badge\" style=\"display: none\">0</span>\n    </div>\n    <div class=\"menu-item__text\">\n      MSIS\n</div>\n  </a>\n';
+        var msisNavLink = '\n  <a id=\"global_nav_msis_link\" href=\"https:\/\/www.palcschool.org\/moodle\/sis\/\" target=\"_blank\" class=\"ic-app-header__menu-list-link\">\n    <div class=\"menu-item-icon-container\" aria-hidden=\"true\">\n<svg xmlns=\"http:\/\/www.w3.org\/2000\/svg\" width=\"32\" height=\"32\" viewBox=\"0 0 32 32\"><title>MSIS</title><path fill=\"#ffffff\" d=\"M28.8,0H3.2A3.11,3.11,0,0,0,0,3V29a3.11,3.11,0,0,0,3.2,3H28.8A3.11,3.11,0,0,0,32,29V3A3.11,3.11,0,0,0,28.8,0ZM27.73,28H4.27V4H27.73ZM8.53,18H23.47v2H8.53Zm0,4H23.47v2H8.53ZM10.67,9a3.11,3.11,0,0,1,3.2-3,3.11,3.11,0,0,1,3.2,3,3.11,3.11,0,0,1-3.2,3A3.11,3.11,0,0,1,10.67,9ZM16,12H11.73c-1.76,0-3.2.9-3.2,2v2H19.2V14C19.2,12.9,17.76,12,16,12Z\"></path></svg>\n<span class=\"menu-item__badge\" style=\"display: none\">0</span>\n    </div>\n    <div class=\"menu-item__text\">\n      MSIS\n</div>\n  </a>\n';
 
 
 
@@ -578,7 +579,27 @@ function addCustomCSS() {
         menu.appendChild(menuMsisItem);
     }
   
-}
+  }
+
+  function palcschoolNav() {
+    
+    if (header !== null){
+        var menu = document.getElementById('menu');
+
+        var menuPalcschoolItem = document.createElement("li");
+        menuPalcschoolItem.className = "menu-item ic-app-header__menu-list-item";
+        //declared animation fadeIn keyframes in keyframesHolderCSSCode variable
+        menuPalcschoolItem.style.animation = "fadeIn 150ms ease-in";
+
+        var palcschoolNavLink = '\n  <a id=\"global_nav_msis_link\" href=\"https:\/\/www.palcschool.org\" target=\"_blank\" class=\"ic-app-header__menu-list-link\">\n    <div class=\"menu-item-icon-container\" aria-hidden=\"true\">\n<svg xmlns=\"http:\/\/www.w3.org\/2000\/svg\" width=\"32\" height=\"32\" viewBox=\"0 0 32 32\"><title>Palcschool Lobby</title><path fill=\"#ffffff\" d=\"M28.8,0H3.2A3.11,3.11,0,0,0,0,3V29a3.11,3.11,0,0,0,3.2,3H28.8A3.11,3.11,0,0,0,32,29V3A3.11,3.11,0,0,0,28.8,0ZM27.73,28H4.27V4H27.73ZM8.53,18H23.47v2H8.53Zm0,4H23.47v2H8.53ZM10.67,9a3.11,3.11,0,0,1,3.2-3,3.11,3.11,0,0,1,3.2,3,3.11,3.11,0,0,1-3.2,3A3.11,3.11,0,0,1,10.67,9ZM16,12H11.73c-1.76,0-3.2.9-3.2,2v2H19.2V14C19.2,12.9,17.76,12,16,12Z\"></path></svg>\n<span class=\"menu-item__badge\" style=\"display: none\">0</span>\n    </div>\n    <div class=\"menu-item__text\">Palcschool Lobby</div>\n  </a>\n';
+
+
+
+        menuPalcschoolItem.innerHTML = palcschoolNavLink;
+        menu.appendChild(menuPalcschoolItem);
+    }
+  
+  }
 
 //TODO: ADD POWERSCHOOL NAV @ https://palcs.powerschool.com/admin/home.html
 
@@ -660,7 +681,7 @@ function addCustomCSS() {
     max-height: inherit !important;
   }`;
 
-  var gradebookTooltipCSSCode = `
+  var hideGradebookTooltipCSSCode = `
   .gradebook-tooltip {
     display: none !important;
   }`;
@@ -727,10 +748,10 @@ function addCustomCSS() {
       addPalcsuiStyle(boxResizerCSSCode);
     }
 
-    if (typeof config.gradebookTooltipCSS !== 'undefined' && !config.gradebookTooltipCSS) {
+    if (typeof config.hideGradebookTooltipCSS !== 'undefined' && !config.hideGradebookTooltipCSS) {
       return;
     } else {
-      addPalcsuiStyle(gradebookTooltipCSSCode);
+      addPalcsuiStyle(hideGradebookTooltipCSSCode);
     }
 
     if (typeof config.keyframesHolderCSS !== 'undefined' && !config.keyframesHolderCSS) {
@@ -743,6 +764,12 @@ function addCustomCSS() {
       return;
     } else {
       msisNav();
+    }
+
+    if (typeof config.addPalcschoolNavigation !== 'undefined' && !config.addPalcschoolNavigation) {
+      return;
+    } else {
+      palcschoolNav();
     }
 
   
