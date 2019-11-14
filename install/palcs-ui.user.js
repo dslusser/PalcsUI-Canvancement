@@ -22,7 +22,7 @@
   };
 
   //addGradePercentage adds a grade percent to the SpeedGrader
-  //boxResizerCSS adjusts the height of some of the small boxes that Canvas
+  //boxResizerCSS adjusts the height of some of the small text boxes in Canvas
   //hideGradebookTooltipCSS hides the obtrusive tooltip in the Gradebook
   //addMsisNavigation adds a direct link to MSIS in the Canvas global navigation menu
   //addPalcschoolNavigation adds a direct link to Palcschool in the Canvas global navigation menu
