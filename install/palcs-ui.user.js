@@ -25,7 +25,7 @@
   //boxResizerCSS adjusts the height of some of the small boxes that Canvas
   //hideGradebookTooltipCSS hides the obtrusive tooltip in the Gradebook
   //addMsisNavigation adds a direct link to MSIS in the Canvas global navigation menu
-  //addPalcschoolNavigation adds a direct link to MSIS in the Canvas global navigation menu
+  //addPalcschoolNavigation adds a direct link to Palcschool in the Canvas global navigation menu
   //I suggest using only one nav menu link until/if I find a second icon :-)
 
   //Gitcdn master palcs-ui-engine.js file
