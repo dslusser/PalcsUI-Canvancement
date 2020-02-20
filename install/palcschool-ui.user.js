@@ -230,19 +230,30 @@
               pCaption.lastElementChild.lastElementChild.lastElementChild.innerHTML += byStudentLink;
       
           } else if (rc_entry == 'rc_entry.php') {
+
+              if (document.getElementsByClassName('infomsg')[0]) {
       
-              var gradingInfoMsg = document.getElementsByClassName('infomsg')[0].innerText;
-              var infomsg = 'Grading not open for course.';
-              //console.log('We\'re at RC Entry, By Period tab');
+                var gradingInfoMsg = document.getElementsByClassName('infomsg')[0].innerText;
+                var infomsg = 'Grading not open for course.';
+                //console.log('We\'re at RC Entry, By Period tab');
+        
+                if (gradingInfoMsg == infomsg && infomsg != 'undefined'){
+        
+                var byStudentLink2 = `<a class="icon rce" style="text-align:right;float:right;" href="https://www.palcschool.org/moodle/palcs20/dashboard/teacher/rc_entry_by_student.php?courseid=`+pCourseID+`">By Student</a>`;
+        
+                var gradingInfoMsg2 = document.getElementsByClassName('infomsg')[0];
+        
+                gradingInfoMsg2.innerHTML += byStudentLink2;
+        
+                }
+              } else if (document.getElementsByClassName('infomsg')[0] == null) {
+
+                var byStudentLink3 = `<a class="icon rce" href="https://www.palcschool.org/moodle/palcs20/dashboard/teacher/rc_entry_by_student.php?courseid=`+pCourseID+`">By Student</a>`;
       
-              if (gradingInfoMsg !== infomsg && infomsg != 'undefined'){
-      
-              var byStudentLink2 = `<a class="icon rce" href="https://www.palcschool.org/moodle/palcs20/dashboard/teacher/rc_entry_by_student.php?courseid=`+pCourseID+`">By Student</a>`;
-      
-              var pCaption2 = document.getElementsByTagName('caption')[0];
-      
-              pCaption2.lastElementChild.lastElementChild.lastElementChild.innerHTML += byStudentLink;
-      
+                var pCaption3 = document.getElementsByTagName('caption')[0];
+
+                pCaption3.lastElementChild.lastElementChild.lastElementChild.innerHTML += byStudentLink3;
+
               }
       
           }
