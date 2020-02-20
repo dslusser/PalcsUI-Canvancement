@@ -5,7 +5,7 @@
 // @include     https://*.palcschool.org/*
 // @include     https://*palcschool.org/*
 // @noframes
-// @version     1.00
+// @version     1.01
 // @grant       none
 // ==/UserScript==
 (function () {
@@ -24,12 +24,15 @@
   // the side navigation menu. Turn it on by setting the
   // value to true. Turn it off by setting it to false.
 
+  // addByStudentRcLink adds the By Student tab to the RC Summary page
+
 
   var config = {
     // PalcschoolUI enhancements may be true or false
     'removeNewTabs': true,
     'dashboardWidthCSS': true,
-    'addPwrSchoolNavigation': true
+    'addPwrSchoolNavigation': true,
+    'addByStudentRcLink': true
   };
 
 
@@ -53,7 +56,8 @@
               'addCustomCSS' : true,
               'dashboardWidthCSS' : true,
               'keyframesHolderCSS' : true,
-              'addPwrSchoolNavigation' : true
+              'addPwrSchoolNavigation' : true,
+              'addByStudentRcLink' : true
           };
       };
 
@@ -205,6 +209,55 @@
           opacity: 1;
           }
       }`;
+
+      function addByStudentRcLink() {
+        if (typeof config.addByStudentRcLink !== 'undefined' && !config.addByStudentRcLink) {
+            return;
+          } else {
+            var getURLArray = document.URL.split(/\?(.+)?/)[0];
+            var parseURL = getURLArray.split('/');
+            var rc_summary = parseURL[7];
+            var rc_entry = parseURL[7];
+
+            var pCourseID = document.URL.split(/\=(.+)?/)[1];
+
+            if (rc_summary == 'rc_summary.php') {
+
+              var byStudentLink = `<a class="icon rce" href="https://www.palcschool.org/moodle/palcs20/dashboard/teacher/rc_entry_by_student.php?courseid=`+pCourseID+`">By Student</a>`;
+      
+              var pCaption = document.getElementsByTagName('caption')[0];
+      
+              pCaption.lastElementChild.lastElementChild.lastElementChild.innerHTML += byStudentLink;
+      
+          } else if (rc_entry == 'rc_entry.php') {
+      
+              var gradingInfoMsg = document.getElementsByClassName('infomsg')[0].innerText;
+              var infomsg = 'Grading not open for course.';
+              //console.log('We\'re at RC Entry, By Period tab');
+      
+              if (gradingInfoMsg !== infomsg && infomsg != 'undefined'){
+      
+              var byStudentLink2 = `<a class="icon rce" href="https://www.palcschool.org/moodle/palcs20/dashboard/teacher/rc_entry_by_student.php?courseid=`+pCourseID+`">By Student</a>`;
+      
+              var pCaption2 = document.getElementsByTagName('caption')[0];
+      
+              pCaption2.lastElementChild.lastElementChild.lastElementChild.innerHTML += byStudentLink;
+      
+              }
+      
+          }
+        }
+      }
+
+      if (/^\/moodle\/palcs20\/dashboard\/teacher\/rc_summary\.php$/.test(window.location.pathname)) {
+        //console.log('We\'re at RC Summary');
+        addByStudentRcLink();
+      }
+
+      if (/^\/moodle\/palcs20\/dashboard\/teacher\/rc_entry\.php$/.test(window.location.pathname)) {
+        //console.log('We\'re at RC Entry By Period');
+        addByStudentRcLink();
+      }
 
 
         if (typeof config.dashboardWidthCSS !== 'undefined' && !config.dashboardWidthCSS) {
