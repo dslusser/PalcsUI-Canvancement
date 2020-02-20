@@ -5,7 +5,7 @@
 // @include     https://*.palcschool.org/*
 // @include     https://*palcschool.org/*
 // @noframes
-// @version     1.01
+// @version     1.02
 // @grant       none
 // ==/UserScript==
 (function () {
