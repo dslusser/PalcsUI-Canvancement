@@ -246,9 +246,11 @@
                 gradingInfoMsg2.innerHTML += byStudentLink2;
         
                 }
-              } else if (document.getElementsByClassName('infomsg')[0] == null) {
+              } else if (document.getElementsByClassName('infomsg')[0] == null && pCourseID) {
 
                 var byStudentLink3 = `<a class="icon rce" href="https://www.palcschool.org/moodle/palcs20/dashboard/teacher/rc_entry_by_student.php?courseid=`+pCourseID+`">By Student</a>`;
+
+                //console.log('Active and true');
       
                 var pCaption3 = document.getElementsByTagName('caption')[0];
 
