@@ -135,11 +135,9 @@
                           if (stickyTopOffsetQ < windowTop) {
                               //$('.tox-toolbar-overlord').css({ top: (windowTop-containerTopOffset) }); // set new top value for the sticky element that would be the window offset minus the container's offset
                               $('.tox-toolbar-overlord').addClass('fixed-header');
-                              $('.rce-html').addClass('fixed-sticky-rce-html');
                           } else {
                               //$('.tox-toolbar-overlord').css({ top: 300 }); // restore the original top value of the sticky element
                               $('.tox-toolbar-overlord').removeClass('fixed-header');
-                              $('.rce-html').removeClass('fixed-sticky-rce-html');
                           }
                       });
                   }
@@ -150,7 +148,7 @@
               //console.log('stickyRceHtml() is running BEFORE setTimeout()');
 
               setTimeout(function () {
-                  if (!!$('.tox-toolbar-overlord').offset()) { // make sure ".tox-toolbar-overlord" element exists
+                  if (!!$('.tox-toolbar-overlord').offset() && !$('#quiz_description').length) { // make sure ".tox-toolbar-overlord" element exists
 
 
                       var rceHtmlButton = document.querySelectorAll(':scope [data-testid="RCEStatusBar"] [title="Switch to raw html editor"]')[0];
@@ -175,7 +173,37 @@
                               $('.rce-html').removeClass('sticky-rce-html');
                           }
                       });
-                  }
+                  } else if (!!$('.tox-toolbar-overlord').offset() && $('#quiz_description').length) { // make sure ".tox-toolbar-overlord" element exists
+
+
+                  var rceHtmlButton2Q = document.querySelectorAll(':scope [data-testid="RCEStatusBar"] [title="Switch to raw html editor"]')[0];
+                  //rceHtmlButton.classList.add('.rce-html');
+                  $(rceHtmlButton2Q).addClass('rce-html');
+                  var controlGroup2Q = document.querySelectorAll('.rce-wrapper')[0];
+                  controlGroup2Q.prepend(rceHtmlButton2Q);
+                  var toolbarWidth2Q = $('.tox-toolbar-overlord').width();
+                      $('.tox-toolbar-overlord').css('max-width', toolbarWidth2Q - 40); // fix overlapping of toolbar with sticky rce-html button
+
+
+
+                  var containerTopOffset2Q = $('.rce-wrapper').offset().top; // get offset the container
+                  var stickyTopOffset2Q = $('.rce-html').offset().top; // get offset of the sticky element
+                  //var stickyTopCss = parseInt($('.tox-toolbar-overlord').css('top'), 10); // get original top pixels set on the sticky element from css
+
+                  //console.log('stickyRceHtml() is running DURING setTimeout()');
+                  $(window).scroll(function () { // scroll event
+                      var windowTop = $(window).scrollTop(); // returns number
+                      if (stickyTopOffset2Q < windowTop) {
+                          //$('.rce-html').css({ top: (windowTop-containerTopOffset) }); // set new top value for the sticky element that would be the window offset minus the container's offset
+                          $('.rce-html').addClass('sticky-rce-html');
+                          $('.rce-html').addClass('fixed-sticky-rce-html');
+                      } else {
+                          //$('.rce-html').css({ top: 300 }); // restore the original top value of the sticky element
+                          $('.rce-html').removeClass('sticky-rce-html');
+                          $('.rce-html').removeClass('fixed-sticky-rce-html');
+                      }
+                  });
+              }
               }, 2000);
           }
 
