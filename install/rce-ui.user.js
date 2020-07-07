@@ -5,7 +5,7 @@
 // @description User enhancements for the Canvas Rich Content Editor
 // @include     https://*.instructure.com/*
 // @noframes
-// @version     2.0.1
+// @version     2.02
 // @grant       none
 // @require       https://cdnjs.cloudflare.com/ajax/libs/jquery/2.1.3/jquery.min.js
 // @updateURL     https://gitcdn.xyz/repo/dslusser/PalcsUI-Canvancement/master/install/rce-ui.user.js
