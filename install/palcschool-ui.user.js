@@ -5,7 +5,7 @@
 // @include     https://*.palcschool.org/*
 // @include     https://*palcschool.org/*
 // @noframes
-// @version     1.03
+// @version     1.04
 // @grant       none
 // ==/UserScript==
 (function () {
@@ -20,6 +20,10 @@
   // the Palcschool teacher dashboard. Turn it on by setting the
   // value to true. Turn it off by setting it to false.
 
+  // canvasBulkMessageCSS somewhat fixes the scrolling issues on
+  // the Palcschool Canvas Bulk Message page. Turn it on by setting the
+  // value to true. Turn it off by setting it to false.
+
   // addPwrSchoolNavigation adds a PowerSchool navigation item to
   // the side navigation menu. Turn it on by setting the
   // value to true. Turn it off by setting it to false.
@@ -31,6 +35,7 @@
     // PalcschoolUI enhancements may be true or false
     'removeNewTabs': true,
     'dashboardWidthCSS': true,
+    'canvasBulkMessageCSS': true,
     'addPwrSchoolNavigation': true,
     'addByStudentRcLink': true
   };
@@ -55,6 +60,7 @@
               'removeNewTabs' : true,
               'addCustomCSS' : true,
               'dashboardWidthCSS' : true,
+              'canvasBulkMessageCSS': true,
               'keyframesHolderCSS' : true,
               'addPwrSchoolNavigation' : true,
               'addByStudentRcLink' : true
@@ -152,6 +158,11 @@
       var dashboardWidthCSSCode = `
       .chart-container {
         width: 100% !important;
+      }`;
+
+      var canvasBulkMessageCSSCode = `
+      .check .columns.blk_message {
+        columns: 2 !important;
       }`;
 
       var keyframesHolderCSSCode = `
@@ -277,6 +288,12 @@
           return;
         } else {
           addPalcschoolUiStyle(dashboardWidthCSSCode);
+        }
+
+        if (typeof config.canvasBulkMessageCSS !== 'undefined' && !config.canvasBulkMessageCSS) {
+          return;
+        } else {
+          addPalcschoolUiStyle(canvasBulkMessageCSSCode);
         }
 
         if (typeof config.keyframesHolderCSS !== 'undefined' && !config.keyframesHolderCSS) {
