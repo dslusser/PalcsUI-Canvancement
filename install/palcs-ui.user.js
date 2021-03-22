@@ -37,7 +37,7 @@
 
   if (typeof PalcsUI !== 'function') {
     const script = document.createElement('script');
-    script.src = 'https://gitcdn.xyz/repo/dslusser/PalcsUI-Canvancement/master/src/palcs-ui-engine.js';
+    script.src = 'https://gitcdn.link/repo/dslusser/PalcsUI-Canvancement/master/src/palcs-ui-engine.js';
     script.onload = function () {
       PalcsUI(config);
     };
