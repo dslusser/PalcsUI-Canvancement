@@ -6,7 +6,7 @@
 // @include     https://*.instructure.com/courses/*/quizzes/*/history?*
 // @include     https://*.instructure.com/*
 // @noframes
-// @version     1.05
+// @version     1.06
 // @grant       none
 // ==/UserScript==
 (function () {
