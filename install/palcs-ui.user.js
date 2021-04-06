@@ -6,7 +6,7 @@
 // @include     https://*.instructure.com/courses/*/quizzes/*/history?*
 // @include     https://*.instructure.com/*
 // @noframes
-// @version     1.07
+// @version     1.07.01
 // @grant       none
 // ==/UserScript==
 (function () {
@@ -37,7 +37,7 @@
 
   if (typeof PalcsUI !== 'function') {
     const script = document.createElement('script');
-    script.src = 'https://gitcdn.xyz/repo/dslusser/PalcsUI-Canvancement/master/src/palcs-ui-engine.js';
+    script.src = 'https://gitcdn.link/repo/dslusser/PalcsUI-Canvancement/master/src/palcs-ui-engine.js';
     script.onload = function () {
       PalcsUI(config);
     };
