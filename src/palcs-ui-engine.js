@@ -614,71 +614,94 @@ function addCustomCSS() {
 
     var boxResizerCSSCode = `
   #assignment_description {
-      min-height: 600px !important;
+    min-height: 600px !important;
   }
-  
+
   #assignment_description_ifr {
-      min-height: 600px !important;
+    min-height: 440px !important;
   }
-  
+
   #quiz_description {
-      min-height: 600px !important;
-      width: 100% !important;
+    min-height: 600px !important;
+    width: 100% !important;
   }
-  
+
   #quiz_description_ifr {
-      min-height: 600px !important;
+    min-height: 440px !important;
   }
-  
+
   #quiz_options_form {
-      padding-right: 20px !important;
+    padding-right: 20px !important;
   }
-  
+
   #speed_grader_comment_textarea {
-      min-height: 150px !important;
-      overflow-y: scroll !important;
+    min-height: 150px !important;
+    overflow-y: scroll !important;
   }
-  
+
   #wiki_page_body {
-      min-height: 600px !important;
+    min-height: 600px !important;
   }
-  
+
   #wiki_page_body_ifr {
-      min-height: 600px !important;
+    min-height: 440px !important;
   }
-  
+
   .quiz_comment {
-      height: 150px !important;
-      width: 75% !important;
+    height: 150px !important;
+    width: 75% !important;
   }
-  
+
   .quiz_comment textarea {
-      height: 100px !important;
-      width: 97% !important;
+    height: 100px !important;
+    width: 97% !important;
   }
-  
+
   div.description.user_content.teacher-version.enhanced {
-      height: auto !important;
+    height: auto !important;
   }
-  
+
   iframe[id^="discussion-topic-message"][id*="_ifr"] {
-      min-height: 600px !important;
+    min-height: 440px !important;
   }
-  
+
   iframe[id^="editor-toggle-"][id*="_ifr"] {
-      min-height: 600px !important;
+    min-height: 440px !important;
   }
-  
+
   textarea[id^="discussion-topic-message"] {
-      min-height: 600px !important;
+    min-height: 440px !important;
   }
-  
+
   textarea[id^="editor-toggle-"] {
-      min-height: 600px !important;
+    min-height: 440px !important;
   }
-  
+
   #courses_list .unstyled_list.context_list {
     max-height: inherit !important;
+  }
+
+  .tox.tox-tinymce.tox-tinymce--toolbar-sticky-off {
+    height: 640px !important;
+    min-height: 440px !important;
+  }
+
+  .tox.tox-tinymce.tox-tinymce--toolbar-sticky-on {
+    height: 640px !important;
+    min-height: 440px !important;
+  }
+
+  .tox.tox-tinymce.tox-tinymce--toolbar-sticky-off.tox-fullscreen {
+    height: 100% !important;
+    min-height: 440px !important;
+  }
+
+  .RceHtmlEditor {
+    min-height: 600px !important;
+  }
+
+  .CodeMirror.cm-s-default.CodeMirror-wrap {
+    min-height: 600px !important;
   }`;
 
   var hideGradebookTooltipCSSCode = `
