@@ -5,7 +5,7 @@
 // @description User enhancements for the Canvas Rich Content Editor
 // @include     https://*.instructure.com/*
 // @noframes
-// @version     2.02
+// @version     2.1.0
 // @grant       none
 // @require       https://cdnjs.cloudflare.com/ajax/libs/jquery/2.1.3/jquery.min.js
 // @updateURL     https://gitcdn.xyz/repo/dslusser/PalcsUI-Canvancement/master/install/rce-ui.user.js
@@ -45,10 +45,10 @@
 
   var config = {
       // RCEMods enhancements may be true or false
-      'addStickyToolbar': true,
-      'RCEStickyToolbarCSS': true,
-      'addStickyRceHtml': true,
-      'StickyRceHtmlCSS': true,
+      'addStickyToolbar': false,
+      'RCEStickyToolbarCSS': false,
+      'addStickyRceHtml': false,
+      'StickyRceHtmlCSS': false,
       'boxResizerCSS': true
   };
 
@@ -70,10 +70,10 @@
           config = {
               // RCEMods default enhancements may be true or false
               'addCustomCSS': true,
-              'RCEStickyToolbarCSS': true,
-              'addStickyToolbar': true,
-              'StickyRceHtmlCSS': true,
-              'addStickyRceHtml': true,
+              'RCEStickyToolbarCSS': false,
+              'addStickyToolbar': false,
+              'StickyRceHtmlCSS': false,
+              'addStickyRceHtml': false,
               'boxResizerCSS': true
           };
       };
@@ -279,7 +279,7 @@
     }
 
     #assignment_description_ifr {
-        min-height: 600px !important;
+        min-height: 440px !important;
     }
 
     #quiz_description {
@@ -288,7 +288,7 @@
     }
 
     #quiz_description_ifr {
-        min-height: 600px !important;
+        min-height: 440px !important;
     }
 
     #quiz_options_form {
@@ -305,7 +305,7 @@
     }
 
     #wiki_page_body_ifr {
-        min-height: 600px !important;
+        min-height: 440px !important;
     }
 
     .quiz_comment {
@@ -323,23 +323,46 @@
     }
 
     iframe[id^="discussion-topic-message"][id*="_ifr"] {
-        min-height: 600px !important;
+        min-height: 440px !important;
     }
 
     iframe[id^="editor-toggle-"][id*="_ifr"] {
-        min-height: 600px !important;
+        min-height: 440px !important;
     }
 
     textarea[id^="discussion-topic-message"] {
-        min-height: 600px !important;
+        min-height: 440px !important;
     }
 
     textarea[id^="editor-toggle-"] {
-        min-height: 600px !important;
+        min-height: 440px !important;
     }
 
     #courses_list .unstyled_list.context_list {
-      max-height: inherit !important;
+        max-height: inherit !important;
+    }
+
+    .tox.tox-tinymce.tox-tinymce--toolbar-sticky-off {
+        height: 640px !important;
+        min-height: 440px !important;
+    }
+
+    .tox.tox-tinymce.tox-tinymce--toolbar-sticky-on {
+        height: 640px !important;
+        min-height: 440px !important;
+    }
+
+    .tox.tox-tinymce.tox-tinymce--toolbar-sticky-off.tox-fullscreen {
+        height: 100% !important;
+        min-height: 440px !important;
+    }
+
+    .RceHtmlEditor {
+        min-height: 600px !important;
+    }
+
+    .CodeMirror.cm-s-default.CodeMirror-wrap {
+        min-height: 600px !important;
     }
     `;
 
