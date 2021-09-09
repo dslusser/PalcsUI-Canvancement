@@ -1,5 +1,5 @@
 // ==UserScript==
-// @name        PalcsUI : Standalone V5.1.00
+// @name        PalcsUI : Standalone
 // @author      Dan Slusser
 // @namespace   https://github.com/dslusser/PalcsUI-Canvancement
 // @description User enhancements for the Palcs Canvas instance
@@ -7,7 +7,7 @@
 // @include     https://*.instructure.com/courses/*/quizzes/*/history?*
 // @include     https://*.instructure.com/*
 // @noframes
-// @version     5.1.00
+// @version     5.1.01
 // @grant       none
 // @require     https://cdnjs.cloudflare.com/ajax/libs/jquery/2.1.3/jquery.min.js
 // @updateURL   https://github.com/dslusser/PalcsUI-Canvancement/raw/master/install/palcs-ui-standalone.user.js
@@ -21,16 +21,6 @@
 
 
   var config = {
-    // Regrading methods may be 'disabled', 'enabled', or 'autorun'
-    'methods' : {
-      'unanswered' : 'disabled',
-      'full_points' : 'disabled',
-      'ma_allnone' : 'disabled',
-      'ma_correct' : 'disabled',
-      'ma_difference' : 'disabled',
-      'fill_in_blanks' : 'disabled',
-      'dropdowns' : 'disabled'
-    },
     // PalcsUI enhancements may be true or false
     'autoExpandComments' : true,
     'duplicateQuestionHeader' : true,
