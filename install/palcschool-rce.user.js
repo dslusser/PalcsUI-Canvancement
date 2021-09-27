@@ -1,13 +1,14 @@
 // ==UserScript==
 // @name        PalcschoolRCE Canvancement
+// @author      Dan Slusser
 // @namespace   https://github.com/dslusser/PalcsUI-Canvancement
 // @description Copy grades and automatically add comments to Report Card Entry page.
 // @include     https://*.palcschool.org/moodle/palcs20/dashboard/teacher/rc_entry.php*
 // @include     https://*palcschool.org/moodle/palcs20/dashboard/teacher/rc_entry.php*
 // @noframes
-// @version     2.00
+// @version     2.01
 // @grant       none
-// @author      Dan Slusser
+// @updateURL   https://github.com/dslusser/PalcsUI-Canvancement/raw/master/install/palcschool-rce.user.js
 // ==/UserScript==
 (function () {
     'use strict';
@@ -156,7 +157,7 @@
 
         if (typeof PalcschoolRCE !== 'function') {
             const script = document.createElement('script');
-            script.src = 'https://gitcdn.xyz/repo/dslusser/PalcsUI-Canvancement/master/install/palcschool-rce.user.js';
+            script.src = 'https://github.com/dslusser/PalcsUI-Canvancement/raw/master/install/palcschool-rce.user.js';
             script.onload = function() {
                 PalcschoolRCE();
                 //console.log('Missing function, loading fallback script.');
