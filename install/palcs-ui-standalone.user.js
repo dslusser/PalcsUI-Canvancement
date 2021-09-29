@@ -7,7 +7,7 @@
 // @include     https://*.instructure.com/courses/*/quizzes/*/history?*
 // @include     https://*.instructure.com/*
 // @noframes
-// @version     5.2.00
+// @version     5.2.01
 // @grant       none
 // @require     https://cdnjs.cloudflare.com/ajax/libs/jquery/2.1.3/jquery.min.js
 // @updateURL   https://github.com/dslusser/PalcsUI-Canvancement/raw/master/install/palcs-ui-standalone.user.js
@@ -1408,11 +1408,17 @@ function addSgStudentNameGreeting() {
 
         var AddSgStudentNameGreetingLink = `<span id="SgGreetingContainer" style="padding: 0px 0px 0px 0.1rem;"><a href="JavaScript:void(0);" id="SgGreeting" style="text-decoration: none;" title="Add Student Name Greeting" alt="Add Student Name Greeting"><span>🥸</span></a></span>`;
 
+        var AddSgStudentNameSalutationLink = `<span id="SgSalutationContainer" style="padding: 0px 0px 0px 0.1rem;"><a href="JavaScript:void(0);" id="SgSalutation" style="text-decoration: none;" title="Add Student Name Salutation" alt="Add Student Name Salutation"><span>😃</span></a></span>`;
+
         //console.log('Active and true');
         
         document.querySelectorAll('#rightside_inner .content_box h2')[1].innerHTML += AddSgStudentNameGreetingLink;
+
+        document.querySelectorAll('#rightside_inner .content_box h2')[1].innerHTML += AddSgStudentNameSalutationLink;
         
         document.getElementById("SgGreeting").addEventListener("click", addSgGreeting);
+        
+        document.getElementById("SgSalutation").addEventListener("click", addSgSalutation);
 
       }
   }
@@ -1425,16 +1431,16 @@ function addSgStudentNameGreeting() {
       var studentFullName = document.querySelector('#students_selectmenu-button .ui-selectmenu-status .ui-selectmenu-item-header').innerText
 
 
-      console.log(studentFullName)
+      //console.log(studentFullName)
 
       var studentFullNameArray = studentFullName.split(/[ ]+/);
       //var studentFullNameArray = studentFullName.split(" "); //Both ways work
 
-      console.log(studentFullNameArray)
+      //console.log(studentFullNameArray)
 
       var studentFirstName = studentFullNameArray[0];
 
-      console.log(studentFirstName)
+      //console.log(studentFirstName)
 
 
       // #speed_grader_comment_textarea_mount_point 
@@ -1453,6 +1459,48 @@ function addSgStudentNameGreeting() {
       var greetingAndComments = greeting + commentBoxTextAreaValue
 
       commentBoxTextArea.value = greetingAndComments
+
+
+    }
+  }
+
+  function addSgSalutation() {
+
+    if (speed_grader == 'speed_grader') {
+
+      //var studentFullName = document.getElementById('students_selectmenu-button').innerText
+      var studentFullName = document.querySelector('#students_selectmenu-button .ui-selectmenu-status .ui-selectmenu-item-header').innerText
+
+
+      //console.log(studentFullName)
+
+      var studentFullNameArray = studentFullName.split(/[ ]+/);
+      //var studentFullNameArray = studentFullName.split(" "); //Both ways work
+
+      //console.log(studentFullNameArray)
+
+      var studentFirstName = studentFullNameArray[0];
+
+      //console.log(studentFirstName)
+
+
+      // #speed_grader_comment_textarea_mount_point 
+      // #speed_grader_comment_textarea
+
+
+      var commentBoxTextArea = document.getElementById('speed_grader_comment_textarea')
+
+      // Basic add
+      // commentBoxTextArea.value += studentFirstName
+
+      var commentBoxTextAreaValue = commentBoxTextArea.value
+
+      //var salutation = " " + studentFirstName + "!" // Space or no space???
+      var salutation = studentFirstName + "!"
+
+      var salutationAndComments = commentBoxTextAreaValue + salutation
+
+      commentBoxTextArea.value = salutationAndComments
 
 
     }
