@@ -333,3 +333,4 @@ ASALocalRun/
 ### Misc files/folders to be excluded - DWS ###
 # Backup folder of misc scripts 
 backups/
+.DS_Store
