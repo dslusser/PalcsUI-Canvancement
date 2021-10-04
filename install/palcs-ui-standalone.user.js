@@ -7,7 +7,7 @@
 // @include     https://*.instructure.com/courses/*/quizzes/*/history?*
 // @include     https://*.instructure.com/*
 // @noframes
-// @version     5.2.01
+// @version     5.2.02
 // @grant       none
 // @require     https://cdnjs.cloudflare.com/ajax/libs/jquery/2.1.3/jquery.min.js
 // @updateURL   https://github.com/dslusser/PalcsUI-Canvancement/raw/master/install/palcs-ui-standalone.user.js
@@ -31,6 +31,7 @@
     'nextRubricExpanded' : true,
     'addGradePercentage' : true,
     'addSgStudentNameGreeting' : true,
+    'adjustBrowserThemeColor' : true,
     'addCustomCSS' : true,
     'boxResizerCSS' : true,
     'hideGradebookTooltipCSS' : true,
@@ -43,6 +44,7 @@
 
   // addGradePercentage adds a grade percent to the SpeedGrader
   // addSgStudentNameGreeting adds a name copy icon to the SpeedGrader
+  // adjustBrowserThemeColor updates Safari 15+ (and Chrome Android App) theming
   // boxResizerCSS adjusts the height of some of the small text boxes in Canvas
   // hideGradebookTooltipCSS hides the obtrusive tooltip in the Gradebook
   // addMsisNavigation adds a direct link to MSIS in the Canvas global navigation menu
@@ -144,6 +146,7 @@
         'nextRubricExpanded' : true,
         'addGradePercentage' : true,
         'addSgStudentNameGreeting' : true,
+        'adjustBrowserThemeColor' : true,
         'addCustomCSS' : true,
         'boxResizerCSS' : true,
         'hideGradebookTooltipCSS' : true,
@@ -167,7 +170,13 @@
         isCanvas = true;
         //console.log(isCanvas + ', yes this is canvas');
         addCustomCSS();
-      }
+    }
+
+    if (/palcs\.instructure\.com$/.test(window.location.host)) {
+        isCanvas = true;
+        //console.log(isCanvas + ', yes this is palcs canvas');
+        adjustBrowserThemeColor();
+    }
 
     if (/^\/courses\/[0-9]+\/gradebook\/speed_grader$/.test(window.location.pathname)) {
         //console.log('we are at speed_grader');
@@ -1275,6 +1284,16 @@
 
   /************************************* */
   /* DWS Enhancements */
+
+  function adjustBrowserThemeColor() {
+    if (typeof config.adjustBrowserThemeColor !== 'undefined' && !config.adjustBrowserThemeColor) {
+      return;
+    }
+    //This function updates the browser theme to match palcs colors
+    if (document.getElementsByName('theme-color')[0].getAttribute('content') == '#e66135'){
+        document.getElementsByName('theme-color')[0].setAttribute('content', '#4a90e2')
+    }
+  }
 
   function addGradePercentage() {
     if (typeof config.addGradePercentage !== 'undefined' && !config.addGradePercentage) {
