@@ -7,7 +7,7 @@
 // @include     https://*.instructure.com/courses/*/quizzes/*/history?*
 // @include     https://*.instructure.com/*
 // @noframes
-// @version     5.2.03
+// @version     5.2.04
 // @grant       none
 // @require     https://cdnjs.cloudflare.com/ajax/libs/jquery/2.1.3/jquery.min.js
 // @updateURL   https://github.com/dslusser/PalcsUI-Canvancement/raw/master/install/palcs-ui-standalone.user.js
@@ -1419,34 +1419,45 @@ function addSgStudentNameGreeting() {
       if (speed_grader == 'speed_grader') {
 
         // ORG var when it was located in the form (moved it out of the form)
-        //var AddSgStudentNameGreetingLink = `<span class="fOyUs_bGBk dJCgj_bGBk" id="SgGreetingContainer"><div class="fOyUs_bGBk fOyUs_desw" style="padding: 0px 0px 0px 0.5rem;"><a href="JavaScript:void(0);" id="SgGreeting" style="" title="Add Student Name Greeting" alt="Add Student Name Greeting"><span>🥸</span></a></div></span>`;
+        //var AddSgStudentNameGreetingLink = `<span class="fOyUs_bGBk dJCgj_bGBk" id="SgGreetingContainer"><div class="fOyUs_bGBk fOyUs_desw" style="padding: 0px 0px 0px 0.5rem;"><a href="JavaScript:void(0);" id="SgGreeting" style="" title="Add Student Name Greeting" alt="Add Student Name Greeting"><span>😬</span></a></div></span>`;
 
         // Had to adjust the location of the variable
         // The form it was originally enclosed in stopped working.
         //var SgTextArea = document.getElementById('speed_grader_comment_textarea_mount_point');
         //SgTextArea.firstElementChild.innerHTML += AddSgStudentNameGreetingLink;
 
-        var AddSgStudentNameGreetingLink = `<span id="SgGreetingContainer" style="padding: 0px 0px 0px 0.1rem;"><a href="JavaScript:void(0);" id="SgGreeting" style="text-decoration: none;" title="Add Student Name Greeting" alt="Add Student Name Greeting"><span>🥸</span></a></span>`;
+        var AddSgStudentNameGreetingLink = `<span id="SgGreetingContainer" style="padding: 0px 0px 0px 0.1rem;"><a href="JavaScript:void(0);" id="SgGreeting" style="text-decoration: none;" title="Add Student Name Greeting" alt="Add Student Name Greeting"><span>😬</span></a></span>`;
 
         var AddSgStudentNameSalutationLink = `<span id="SgSalutationContainer" style="padding: 0px 0px 0px 0.1rem;"><a href="JavaScript:void(0);" id="SgSalutation" style="text-decoration: none;" title="Add Student Name Salutation" alt="Add Student Name Salutation"><span>😃</span></a></span>`;
+
+        var AddSgStudentNameShortCodeLink = `<span id="SgStudentNameShortCodeContainer" style="padding: 0px 0px 0px 0.1rem;"><a href="JavaScript:void(0);" id="SgStudentNameShortCode" style="text-decoration: none;" title="Replace Student Name Short Code" alt="Replace Student Name Short Code"><span>🥸</span></a></span>`;
 
         //console.log('Active and true');
 
         if (!hasRubric) {
 
+          document.querySelectorAll('#rightside_inner .content_box h2')[1].innerHTML += AddSgStudentNameShortCodeLink;
+
           document.querySelectorAll('#rightside_inner .content_box h2')[1].innerHTML += AddSgStudentNameGreetingLink;
 
           document.querySelectorAll('#rightside_inner .content_box h2')[1].innerHTML += AddSgStudentNameSalutationLink;
+
+          document.getElementById("SgStudentNameShortCode").addEventListener("click", replaceSgStudentNameShortCode);
 
           document.getElementById("SgGreeting").addEventListener("click", addSgGreeting);
 
           document.getElementById("SgSalutation").addEventListener("click", addSgSalutation);
 
+
         } else if (hasRubric) {
+
+          document.querySelectorAll('#rightside_inner .content_box h2')[4].innerHTML += AddSgStudentNameShortCodeLink;
 
           document.querySelectorAll('#rightside_inner .content_box h2')[4].innerHTML += AddSgStudentNameGreetingLink;
 
           document.querySelectorAll('#rightside_inner .content_box h2')[4].innerHTML += AddSgStudentNameSalutationLink;
+
+          document.getElementById("SgStudentNameShortCode").addEventListener("click", replaceSgStudentNameShortCode);
 
           document.getElementById("SgGreeting").addEventListener("click", addSgGreeting);
 
@@ -1536,6 +1547,47 @@ function addSgStudentNameGreeting() {
       var salutationAndComments = commentBoxTextAreaValue + salutation
 
       commentBoxTextArea.value = salutationAndComments
+
+
+    }
+  }
+
+  function replaceSgStudentNameShortCode() {
+
+    if (speed_grader == 'speed_grader') {
+
+      //var studentFullName = document.getElementById('students_selectmenu-button').innerText
+      var studentFullName = document.querySelector('#students_selectmenu-button .ui-selectmenu-status .ui-selectmenu-item-header').innerText
+
+
+      //console.log(studentFullName)
+
+      var studentFullNameArray = studentFullName.split(/[ ]+/);
+      //var studentFullNameArray = studentFullName.split(" "); //Both ways work
+
+      //console.log(studentFullNameArray)
+
+      var studentFirstName = studentFullNameArray[0];
+
+      //console.log(studentFirstName)
+
+
+      // #speed_grader_comment_textarea_mount_point
+      // #speed_grader_comment_textarea
+
+
+      var commentBoxTextArea = document.getElementById('speed_grader_comment_textarea')
+
+      // Basic add
+      // commentBoxTextArea.value += studentFirstName
+
+      var commentBoxTextAreaValue = commentBoxTextArea.value
+
+      const regex = /(\[{2}StudentName\]{2})/gm;
+
+      var commentBoxTextAreaNewValue = commentBoxTextAreaValue.replaceAll(regex, studentFirstName);
+
+      commentBoxTextArea.value = commentBoxTextAreaNewValue
 
 
     }
