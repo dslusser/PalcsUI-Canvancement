@@ -7,7 +7,7 @@
 // @include     https://*.instructure.com/courses/*/quizzes/*/history?*
 // @include     https://*.instructure.com/*
 // @noframes
-// @version     5.2.02
+// @version     5.2.03
 // @grant       none
 // @require     https://cdnjs.cloudflare.com/ajax/libs/jquery/2.1.3/jquery.min.js
 // @updateURL   https://github.com/dslusser/PalcsUI-Canvancement/raw/master/install/palcs-ui-standalone.user.js
@@ -1410,6 +1410,7 @@ function addSgStudentNameGreeting() {
   var speed_grader = parseURL[6];
   var header = document.getElementById('header');
   var pointPercentNumberFired = false; //NEW for Debugging
+  var hasRubric = document.getElementById('rubric_full');
 
   $(document).ready(function(){setupAddSgStudentNameGreetingContainers();}); //ORG Working Design
 
@@ -1430,14 +1431,29 @@ function addSgStudentNameGreeting() {
         var AddSgStudentNameSalutationLink = `<span id="SgSalutationContainer" style="padding: 0px 0px 0px 0.1rem;"><a href="JavaScript:void(0);" id="SgSalutation" style="text-decoration: none;" title="Add Student Name Salutation" alt="Add Student Name Salutation"><span>😃</span></a></span>`;
 
         //console.log('Active and true');
-        
-        document.querySelectorAll('#rightside_inner .content_box h2')[1].innerHTML += AddSgStudentNameGreetingLink;
 
-        document.querySelectorAll('#rightside_inner .content_box h2')[1].innerHTML += AddSgStudentNameSalutationLink;
-        
-        document.getElementById("SgGreeting").addEventListener("click", addSgGreeting);
-        
-        document.getElementById("SgSalutation").addEventListener("click", addSgSalutation);
+        if (!hasRubric) {
+
+          document.querySelectorAll('#rightside_inner .content_box h2')[1].innerHTML += AddSgStudentNameGreetingLink;
+
+          document.querySelectorAll('#rightside_inner .content_box h2')[1].innerHTML += AddSgStudentNameSalutationLink;
+
+          document.getElementById("SgGreeting").addEventListener("click", addSgGreeting);
+
+          document.getElementById("SgSalutation").addEventListener("click", addSgSalutation);
+
+        } else if (hasRubric) {
+
+          document.querySelectorAll('#rightside_inner .content_box h2')[4].innerHTML += AddSgStudentNameGreetingLink;
+
+          document.querySelectorAll('#rightside_inner .content_box h2')[4].innerHTML += AddSgStudentNameSalutationLink;
+
+          document.getElementById("SgGreeting").addEventListener("click", addSgGreeting);
+
+          document.getElementById("SgSalutation").addEventListener("click", addSgSalutation);
+
+
+          }
 
       }
   }
@@ -1462,7 +1478,7 @@ function addSgStudentNameGreeting() {
       //console.log(studentFirstName)
 
 
-      // #speed_grader_comment_textarea_mount_point 
+      // #speed_grader_comment_textarea_mount_point
       // #speed_grader_comment_textarea
 
 
@@ -1503,7 +1519,7 @@ function addSgStudentNameGreeting() {
       //console.log(studentFirstName)
 
 
-      // #speed_grader_comment_textarea_mount_point 
+      // #speed_grader_comment_textarea_mount_point
       // #speed_grader_comment_textarea
 
 
