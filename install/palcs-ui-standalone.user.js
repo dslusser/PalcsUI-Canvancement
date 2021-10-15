@@ -7,7 +7,7 @@
 // @include     https://*.instructure.com/courses/*/quizzes/*/history?*
 // @include     https://*.instructure.com/*
 // @noframes
-// @version     5.2.04
+// @version     5.2.05
 // @grant       none
 // @require     https://cdnjs.cloudflare.com/ajax/libs/jquery/2.1.3/jquery.min.js
 // @updateURL   https://github.com/dslusser/PalcsUI-Canvancement/raw/master/install/palcs-ui-standalone.user.js
@@ -34,6 +34,7 @@
     'adjustBrowserThemeColor' : true,
     'addCustomCSS' : true,
     'boxResizerCSS' : true,
+    'adjustExternalToolBox' : true,
     'hideGradebookTooltipCSS' : true,
     'keyframesHolderCSS' : true,
     'addMsisNavigation' : false,
@@ -43,9 +44,10 @@
 
 
   // addGradePercentage adds a grade percent to the SpeedGrader
-  // addSgStudentNameGreeting adds a name copy icon to the SpeedGrader
+  // addSgStudentNameGreeting adds a name copy icons to the SpeedGrader
   // adjustBrowserThemeColor updates Safari 15+ (and Chrome Android App) theming
   // boxResizerCSS adjusts the height of some of the small text boxes in Canvas
+  // adjustExternalToolBox adjusts the height and width of the Assignment External Tool box
   // hideGradebookTooltipCSS hides the obtrusive tooltip in the Gradebook
   // addMsisNavigation adds a direct link to MSIS in the Canvas global navigation menu
   // addPalcschoolNavigation adds a direct link to Palcschool in the Canvas global navigation menu
@@ -149,6 +151,7 @@
         'adjustBrowserThemeColor' : true,
         'addCustomCSS' : true,
         'boxResizerCSS' : true,
+        'adjustExternalToolBox' : true,
         'hideGradebookTooltipCSS' : true,
         'keyframesHolderCSS' : true,
         'addMsisNavigation' : false,
@@ -170,6 +173,7 @@
         isCanvas = true;
         //console.log(isCanvas + ', yes this is canvas');
         addCustomCSS();
+        adjustExternalToolBox();
     }
 
     if (/palcs\.instructure\.com$/.test(window.location.host)) {
@@ -1593,6 +1597,99 @@ function addSgStudentNameGreeting() {
     }
   }
 
+}
+
+
+function adjustExternalToolBox() {
+    if (typeof config.adjustExternalToolBox !== 'undefined' && !config.adjustExternalToolBox) {
+        return;
+    }
+    //console.log('adjustExternalToolBox() is running');
+
+    //Globals for adjustExternalToolBox functions
+    var getURLArray = document.URL.split(/\?(.+)?/)[0];
+    var parseURL = getURLArray.split('/');
+    var assignments = parseURL[5];
+    var edit = parseURL[7];
+
+    $(document).ready(function () {
+        setupAdjustExternalToolBoxContainers();
+    }); //ORG Working Design
+
+    function setupAdjustExternalToolBoxContainers() {
+
+        if (assignments == 'assignments' && edit == 'edit') {
+
+            if (document.getElementById("assignment_external_tool_tag_attributes_url_find")){
+
+                //External tool button id=assignment_external_tool_tag_attributes_url_find
+                var ExternalToolButton = document.getElementById("assignment_external_tool_tag_attributes_url_find")
+                ExternalToolButton.addEventListener('click', visibilityObserverLauncher);
+
+                function visibilityObserverLauncher() {
+                    //console.log("visibilityObserverLauncher initialized")
+                    //const preInnerLTI = document.getElementById("select_context_content_dialog")
+                    //console.log(window.getComputedStyle(preInnerLTI))
+                    //console.log("0 The calculated current style.display is " + window.getComputedStyle(preInnerLTI).display)
+                    visibilityObserver();
+                    //ExternalToolButton.removeEventListener('click', visibilityObserverLauncher);
+                }
+
+
+                function visibilityObserver() {
+
+                    const innerLTI = document.getElementById("select_context_content_dialog");
+                    //let display = innerLTI.style.display
+                    //let currentStyle = innerLTI.style.display;
+                    //var currentStyle = innerLTI.style.display;
+                    //console.log("Initial current style.display is " + currentStyle)
+                    //innerLTI.style.display is unreliable bc it only checks inline styles.
+                    //we need to use window.getComputedStyle(innerLTI).display for best accuracy
+
+                    //var calculatedCurrentStyle = window.getComputedStyle(innerLTI).display;
+                    //console.log("1 The calculated current style.display is " + window.getComputedStyle(innerLTI).display)
+
+                    // Callback function when changes occurs
+                    function callback(mutationRecord, observer) {
+                        //console.log("changed")
+                        //console.log("Current style.display is now: " + currentStyle)
+                        //console.log("2 The calculated current style.display is " + window.getComputedStyle(innerLTI).display)
+
+                        var newTop = innerLTI.parentElement.offsetTop - 100; //50
+                        parseInt(newTop)
+                        //console.log(newTop)
+
+                        var LTIContainer = document.querySelectorAll(".ui-dialog.ui-widget.ui-widget-content.ui-corner-all.ui-draggable.ui-resizable.ui-dialog-buttons")[0];
+                        LTIContainer.style.width = '80%';
+                        LTIContainer.style.left = '10%';
+                        LTIContainer.style.top = newTop + 'px';
+                        innerLTI.style.height = '370px';
+                        //console.log(observer)
+                        observer.disconnect();
+                        //console.log("after disconnect, observer is now " + observer)
+                        //console.log("3 The calculated current style.display is " + window.getComputedStyle(innerLTI).display)
+                    }
+
+                    // Create a new instance of MutationObserver with callback in params
+                    const observer = new MutationObserver(callback);
+
+                    // Setup config
+                    const config = {
+                        attributeFilter: ["style"]
+                    };
+
+                    // When everything is ready, we just observe our target (innerLTI)
+                    observer.observe(innerLTI, config);
+
+                    //console.log("After the observer, style.display is " + currentStyle)
+                    //console.log("4 The calculated current style.display is " + window.getComputedStyle(innerLTI).display)
+
+                }
+            }
+
+
+        }
+    }
 }
 
 
