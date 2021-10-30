@@ -7,7 +7,7 @@
 // @include     https://*.instructure.com/courses/*/quizzes/*/history?*
 // @include     https://*.instructure.com/*
 // @noframes
-// @version     5.2.05
+// @version     5.2.06
 // @grant       none
 // @require     https://cdnjs.cloudflare.com/ajax/libs/jquery/2.1.3/jquery.min.js
 // @updateURL   https://github.com/dslusser/PalcsUI-Canvancement/raw/master/install/palcs-ui-standalone.user.js
@@ -1367,6 +1367,29 @@
       $('#grading-box-extended').on('keyup blur keypress change', showGradePercentage);
       $('#next-student-button').on('click mousedown', showGradePercentage);
       $('#prev-student-button').on('click mousedown', showGradePercentage);
+
+
+      //Setup mutation observer on the student list to fire showGradePercentage() on student change via student list
+      const studentListContainer = document.getElementById("combo_box_container");
+      // Callback function when student list changes
+      function callback(mutationRecord, observer) {
+
+        showGradePercentage();
+        //console.log('student list changed');
+        //observer.disconnect();
+      }
+
+      // Create a new instance of MutationObserver with callback in params
+      const observer = new MutationObserver(callback);
+
+      const config = {
+        subtree: true,
+        childList: true
+      };
+
+      // When everything is ready, we just observe our target (studentListContainer)
+      observer.observe(studentListContainer, config);
+
       }
   }
 
