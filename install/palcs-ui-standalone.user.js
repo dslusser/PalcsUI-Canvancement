@@ -2000,8 +2000,7 @@ function addCustomCSS() {
 
     .CodeMirror.cm-s-default.CodeMirror-wrap {
       min-height: 600px !important;
-    }
-  }`;
+    }`;
 
   var hideGradebookTooltipCSSCode = `
   .gradebook-tooltip {
