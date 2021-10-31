@@ -7,7 +7,7 @@
 // @include     https://*.instructure.com/courses/*/quizzes/*/history?*
 // @include     https://*.instructure.com/*
 // @noframes
-// @version     5.2.07
+// @version     5.2.08
 // @grant       none
 // @require     https://cdnjs.cloudflare.com/ajax/libs/jquery/2.1.3/jquery.min.js
 // @updateURL   https://github.com/dslusser/PalcsUI-Canvancement/raw/master/install/palcs-ui-standalone.user.js
@@ -32,6 +32,7 @@
     'addGradePercentage' : true,
     'addSgStudentNameGreeting' : true,
     'adjustBrowserThemeColor' : true,
+    'addWhatIfScoresButton' : true,
     'addCustomCSS' : true,
     'boxResizerCSS' : true,
     'adjustExternalToolBox' : true,
@@ -46,6 +47,7 @@
   // addGradePercentage adds a grade percent to the SpeedGrader
   // addSgStudentNameGreeting adds a name copy icons to the SpeedGrader
   // adjustBrowserThemeColor updates Safari 15+ (and Chrome Android App) theming
+  // addWhatIfScoresButton adds a What If Scores button to the Student Grades Page
   // boxResizerCSS adjusts the height of some of the small text boxes in Canvas
   // adjustExternalToolBox adjusts the height and width of the Assignment External Tool box
   // hideGradebookTooltipCSS hides the obtrusive tooltip in the Gradebook
@@ -149,6 +151,7 @@
         'addGradePercentage' : true,
         'addSgStudentNameGreeting' : true,
         'adjustBrowserThemeColor' : true,
+        'addWhatIfScoresButton' : true,
         'addCustomCSS' : true,
         'boxResizerCSS' : true,
         'adjustExternalToolBox' : true,
@@ -180,6 +183,11 @@
         isCanvas = true;
         //console.log(isCanvas + ', yes this is palcs canvas');
         adjustBrowserThemeColor();
+    }
+
+    if (/^\/courses\/[0-9]+\/grades\/[0-9]+$/.test(window.location.pathname)) {
+        //console.log('we are at student grades page');
+        addWhatIfScoresButton();
     }
 
     if (/^\/courses\/[0-9]+\/gradebook\/speed_grader$/.test(window.location.pathname)) {
@@ -1299,6 +1307,50 @@
     }
   }
 
+  function addWhatIfScoresButton() {
+    if (typeof config.addWhatIfScoresButton !== 'undefined' && !config.addWhatIfScoresButton) {
+      return;
+    }
+    // Create the teacherWhatIfContainer div and teacherWhatIfButton button elements
+    var teacherWhatIfContainer = document.createElement('div');
+    var teacherWhatIfButton = document.createElement('button');
+
+    teacherWhatIfContainer.id = 'teacher-what-if';
+    teacherWhatIfContainer.className = 'teacher_what_if';
+    teacherWhatIfContainer.style.display = 'block';
+    teacherWhatIfContainer.style.margin = '6px 0';
+
+    teacherWhatIfButton.id = 'teacher_what_if_button';
+    teacherWhatIfButton.className = 'Button';
+    teacherWhatIfButton.innerHTML = 'Enable What-If Scores';
+
+
+    // Get the studentGradesShowAll container
+    var studentGradesShowAllContainer = document.querySelector('#student-grades-show-all');
+
+    // Insert the teacherWhatIfContainer div and teacherWhatIfButton button elements
+    studentGradesShowAllContainer.after(teacherWhatIfContainer);
+    teacherWhatIfContainer.appendChild(teacherWhatIfButton);
+
+
+    // Add event listener to the teacherWhatIfButton button
+    teacherWhatIfButton.addEventListener('click', function() {
+        if (teacherWhatIfButton.innerHTML === 'Enable What-If Scores') {
+            teacherWhatIfButton.innerHTML = 'Disable What-If Scores';
+            document.querySelector('#grades_summary').classList.toggle("editable");
+            document.querySelectorAll(".assignment_score").forEach(function(element) {
+                element.style.cursor = "pointer";
+            });
+        } else if (teacherWhatIfButton.innerHTML === 'Disable What-If Scores') {
+            teacherWhatIfButton.innerHTML = 'Enable What-If Scores';
+            document.querySelector('#grades_summary').classList.toggle("editable");
+            document.querySelectorAll(".assignment_score").forEach(function(element) {
+                element.style.cursor = "default";
+            });
+        }
+    });
+  }
+
   function addGradePercentage() {
     if (typeof config.addGradePercentage !== 'undefined' && !config.addGradePercentage) {
       return;
@@ -1484,19 +1536,19 @@ function addSgStudentNameGreeting() {
 
           //document.getElementById("combo_box_container").addEventListener("mouseover", replaceSgStudentNameShortCode);
 
-          ['mouseover','ontouchstart','blur','click','focus'].forEach( evt => 
+          ['mouseover','ontouchstart','blur','click','focus'].forEach( evt =>
             document.getElementById("next-student-button").addEventListener(evt, replaceSgStudentNameShortCode, false)
           );
 
-          ['mouseover','ontouchstart','blur','click','focus'].forEach( evt => 
+          ['mouseover','ontouchstart','blur','click','focus'].forEach( evt =>
             document.getElementById("prev-student-button").addEventListener(evt, replaceSgStudentNameShortCode, false)
           );
 
-          ['mouseover','ontouchstart','blur','click','focus'].forEach( evt => 
+          ['mouseover','ontouchstart','blur','click','focus'].forEach( evt =>
             document.getElementById("combo_box_container").addEventListener(evt, replaceSgStudentNameShortCode, false)
           );
 
-          ['mouseover','ontouchstart','blur','click','focus'].forEach( evt => 
+          ['mouseover','ontouchstart','blur','click','focus'].forEach( evt =>
             document.getElementById("comment_submit_button").addEventListener(evt, replaceSgStudentNameShortCode, false)
           );
 
@@ -1532,23 +1584,23 @@ function addSgStudentNameGreeting() {
 
           //var rubricSaveButton = document.querySelector('div#rubric_holder button.save_rubric_button');
 
-          ['mouseover','ontouchstart','blur','click','focus'].forEach( evt => 
+          ['mouseover','ontouchstart','blur','click','focus'].forEach( evt =>
             document.querySelector('div#rubric_holder button.save_rubric_button').addEventListener(evt, replaceSgStudentNameShortCode, false)
           );
 
-          ['mouseover','ontouchstart','blur','click','focus'].forEach( evt => 
+          ['mouseover','ontouchstart','blur','click','focus'].forEach( evt =>
             document.getElementById("next-student-button").addEventListener(evt, replaceSgStudentNameShortCode, false)
           );
 
-          ['mouseover','ontouchstart','blur','click','focus'].forEach( evt => 
+          ['mouseover','ontouchstart','blur','click','focus'].forEach( evt =>
             document.getElementById("prev-student-button").addEventListener(evt, replaceSgStudentNameShortCode, false)
           );
 
-          ['mouseover','ontouchstart','blur','click','focus'].forEach( evt => 
+          ['mouseover','ontouchstart','blur','click','focus'].forEach( evt =>
             document.getElementById("combo_box_container").addEventListener(evt, replaceSgStudentNameShortCode, false)
           );
 
-          ['mouseover','ontouchstart','blur','click','focus'].forEach( evt => 
+          ['mouseover','ontouchstart','blur','click','focus'].forEach( evt =>
             document.getElementById("comment_submit_button").addEventListener(evt, replaceSgStudentNameShortCode, false)
           );
 
