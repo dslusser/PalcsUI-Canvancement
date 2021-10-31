@@ -7,7 +7,7 @@
 // @include     https://*.instructure.com/courses/*/quizzes/*/history?*
 // @include     https://*.instructure.com/*
 // @noframes
-// @version     5.2.06
+// @version     5.2.07
 // @grant       none
 // @require     https://cdnjs.cloudflare.com/ajax/libs/jquery/2.1.3/jquery.min.js
 // @updateURL   https://github.com/dslusser/PalcsUI-Canvancement/raw/master/install/palcs-ui-standalone.user.js
@@ -1457,7 +1457,10 @@ function addSgStudentNameGreeting() {
 
         var AddSgStudentNameSalutationLink = `<span id="SgSalutationContainer" style="padding: 0px 0px 0px 0.1rem;"><a href="JavaScript:void(0);" id="SgSalutation" style="text-decoration: none;" title="Add Student Name Salutation" alt="Add Student Name Salutation"><span>😃</span></a></span>`;
 
-        var AddSgStudentNameShortCodeLink = `<span id="SgStudentNameShortCodeContainer" style="padding: 0px 0px 0px 0.1rem;"><a href="JavaScript:void(0);" id="SgStudentNameShortCode" style="text-decoration: none;" title="Replace Student Name Short Code" alt="Replace Student Name Short Code"><span>🥸</span></a></span>`;
+        var AddSgStudentNameShortCodeLink = `<span id="SgStudentNameShortCodeContainer" style="padding: 0px 0px 0px 0.1rem;"><a href="JavaScript:void(0);" id="SgStudentNameShortCode" style="text-decoration: none;" title="Replace Student Name Short Code" alt="Replace Student Name Short Code"><span>🤓</span></a></span>`;
+
+        const nameSpAdvance = document.querySelectorAll(("." + namespace + "_next"));
+        //console.log(nameSpAdvance)
 
         //console.log('Active and true');
 
@@ -1475,6 +1478,37 @@ function addSgStudentNameGreeting() {
 
           document.getElementById("SgSalutation").addEventListener("click", addSgSalutation);
 
+          //document.getElementById("next-student-button").addEventListener("mouseover", replaceSgStudentNameShortCode);
+
+          //document.getElementById("prev-student-button").addEventListener("mouseover", replaceSgStudentNameShortCode);
+
+          //document.getElementById("combo_box_container").addEventListener("mouseover", replaceSgStudentNameShortCode);
+
+          ['mouseover','ontouchstart','blur','click','focus'].forEach( evt => 
+            document.getElementById("next-student-button").addEventListener(evt, replaceSgStudentNameShortCode, false)
+          );
+
+          ['mouseover','ontouchstart','blur','click','focus'].forEach( evt => 
+            document.getElementById("prev-student-button").addEventListener(evt, replaceSgStudentNameShortCode, false)
+          );
+
+          ['mouseover','ontouchstart','blur','click','focus'].forEach( evt => 
+            document.getElementById("combo_box_container").addEventListener(evt, replaceSgStudentNameShortCode, false)
+          );
+
+          ['mouseover','ontouchstart','blur','click','focus'].forEach( evt => 
+            document.getElementById("comment_submit_button").addEventListener(evt, replaceSgStudentNameShortCode, false)
+          );
+
+          //const nameSpAdvance = document.querySelectorAll(("." + namespace + "_next"));
+          for (let i = 0; i < nameSpAdvance.length; i++) {
+            nameSpAdvance[i].addEventListener('mouseover', replaceSgStudentNameShortCode, false);
+            nameSpAdvance[i].addEventListener('ontouchstart', replaceSgStudentNameShortCode, false);
+            nameSpAdvance[i].addEventListener('blur', replaceSgStudentNameShortCode, false);
+            nameSpAdvance[i].addEventListener('click', replaceSgStudentNameShortCode, false);
+            nameSpAdvance[i].addEventListener('focus', replaceSgStudentNameShortCode, false);
+          };
+
 
         } else if (hasRubric) {
 
@@ -1490,8 +1524,45 @@ function addSgStudentNameGreeting() {
 
           document.getElementById("SgSalutation").addEventListener("click", addSgSalutation);
 
+          //document.getElementById("next-student-button").addEventListener("mouseover", replaceSgStudentNameShortCode);
 
-          }
+          //document.getElementById("prev-student-button").addEventListener("mouseover", replaceSgStudentNameShortCode);
+
+          //document.getElementById("combo_box_container").addEventListener("mouseover", replaceSgStudentNameShortCode);
+
+          //var rubricSaveButton = document.querySelector('div#rubric_holder button.save_rubric_button');
+
+          ['mouseover','ontouchstart','blur','click','focus'].forEach( evt => 
+            document.querySelector('div#rubric_holder button.save_rubric_button').addEventListener(evt, replaceSgStudentNameShortCode, false)
+          );
+
+          ['mouseover','ontouchstart','blur','click','focus'].forEach( evt => 
+            document.getElementById("next-student-button").addEventListener(evt, replaceSgStudentNameShortCode, false)
+          );
+
+          ['mouseover','ontouchstart','blur','click','focus'].forEach( evt => 
+            document.getElementById("prev-student-button").addEventListener(evt, replaceSgStudentNameShortCode, false)
+          );
+
+          ['mouseover','ontouchstart','blur','click','focus'].forEach( evt => 
+            document.getElementById("combo_box_container").addEventListener(evt, replaceSgStudentNameShortCode, false)
+          );
+
+          ['mouseover','ontouchstart','blur','click','focus'].forEach( evt => 
+            document.getElementById("comment_submit_button").addEventListener(evt, replaceSgStudentNameShortCode, false)
+          );
+
+          //const nameSpAdvance = document.querySelectorAll(("." + namespace + "_next"));
+          for (let i = 0; i < nameSpAdvance.length; i++) {
+            nameSpAdvance[i].addEventListener('mouseover', replaceSgStudentNameShortCode, false);
+            nameSpAdvance[i].addEventListener('ontouchstart', replaceSgStudentNameShortCode, false);
+            nameSpAdvance[i].addEventListener('blur', replaceSgStudentNameShortCode, false);
+            nameSpAdvance[i].addEventListener('click', replaceSgStudentNameShortCode, false);
+            nameSpAdvance[i].addEventListener('focus', replaceSgStudentNameShortCode, false);
+          };
+
+
+        }
 
       }
   }
