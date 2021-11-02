@@ -7,7 +7,7 @@
 // @include     https://*.instructure.com/courses/*/quizzes/*/history?*
 // @include     https://*.instructure.com/*
 // @noframes
-// @version     5.2.08
+// @version     5.2.09
 // @grant       none
 // @require     https://cdnjs.cloudflare.com/ajax/libs/jquery/2.1.3/jquery.min.js
 // @updateURL   https://github.com/dslusser/PalcsUI-Canvancement/raw/master/install/palcs-ui-standalone.user.js
@@ -32,6 +32,7 @@
     'addGradePercentage' : true,
     'addSgStudentNameGreeting' : true,
     'adjustBrowserThemeColor' : true,
+    'addSpecialGlobalNavLinks' : true,
     'addWhatIfScoresButton' : true,
     'addCustomCSS' : true,
     'boxResizerCSS' : true,
@@ -47,6 +48,7 @@
   // addGradePercentage adds a grade percent to the SpeedGrader
   // addSgStudentNameGreeting adds a name copy icons to the SpeedGrader
   // adjustBrowserThemeColor updates Safari 15+ (and Chrome Android App) theming
+  // addSpecialGlobalNavLinks adds announcements, modules, users, and grades links to each Courses global nav item
   // addWhatIfScoresButton adds a What If Scores button to the Student Grades Page
   // boxResizerCSS adjusts the height of some of the small text boxes in Canvas
   // adjustExternalToolBox adjusts the height and width of the Assignment External Tool box
@@ -151,6 +153,7 @@
         'addGradePercentage' : true,
         'addSgStudentNameGreeting' : true,
         'adjustBrowserThemeColor' : true,
+        'addSpecialGlobalNavLinks' : true,
         'addWhatIfScoresButton' : true,
         'addCustomCSS' : true,
         'boxResizerCSS' : true,
@@ -183,6 +186,7 @@
         isCanvas = true;
         //console.log(isCanvas + ', yes this is palcs canvas');
         adjustBrowserThemeColor();
+        addSpecialGlobalNavLinks();
     }
 
     if (/^\/courses\/[0-9]+\/grades\/[0-9]+$/.test(window.location.pathname)) {
@@ -1307,6 +1311,128 @@
     }
   }
 
+  function addSpecialGlobalNavLinks() {
+    if (typeof config.addSpecialGlobalNavLinks !== 'undefined' && !config.addSpecialGlobalNavLinks) {
+      return;
+    }
+
+    //console.log('addSpecialGlobalNavLinks() is running')
+
+    $(document).ready(function () {
+        addTheLinks();
+    }); //ORG Working Design
+
+
+    function addTheLinks(){
+        //console.log('addTheLinks() fired')
+
+        var coursesButton = document.querySelector('#global_nav_courses_link');
+        if (coursesButton) {
+            //console.log('coursesButton is true')
+            coursesButton.addEventListener('click', visibilityObserverLauncher, false);
+            //console.log('coursesButton addEventListener, click added')
+            coursesButton.addEventListener('keydown', visibilityObserverLauncher, false);
+            //console.log('coursesButton addEventListener, keydown added')
+            coursesButton.addEventListener('ontouchstart', visibilityObserverLauncher, false);
+            //console.log('coursesButton addEventListener, ontouchstart added')
+            //$(document).ready(function(){addTheLinks();});
+            //console.log('addTheLinks() called bc coursesButton is true');
+        }
+
+        function visibilityObserverLauncher(){
+            visibilityObserver();
+        }
+
+        function visibilityObserver(){
+
+            const navTray = document.querySelector('#nav-tray-portal');
+            function testLinks(){
+                var result = false;
+                document.querySelectorAll('#nav-tray-portal .navigation-tray-container.courses-tray a').forEach(function(element) {
+                    if (element.innerText.includes('All Courses')){
+                        //console.log('All Courses link found, returning true');
+                        result = true;
+                        return false; //We found what we needed, no need to keep looping
+                    }
+                });
+                return result;
+            }
+
+            // Callback function when changes occurs
+            function callback(mutationRecord, observer) {
+
+                if (testLinks()) {
+                    //console.log('Courses global nav menu tray is open');
+                    document.querySelectorAll('#nav-tray-portal .navigation-tray-container.courses-tray a').forEach(function(element) {
+                        //console.log(element.href);
+                        var getLinkArray = element.href.split('/');
+                        var relativeLink = "/" + getLinkArray[3] + "/" + getLinkArray[4] + "/";
+
+                        if (!relativeLink.includes('undefined')) {
+                            //console.log(relativeLink);
+                            //console.log(element);
+                            var subLinkContainer = document.createElement('div');
+                            var announcementsLink = document.createElement('a');
+                            var modulesLink = document.createElement('a');
+                            var usersLink = document.createElement('a');
+                            var gradebookLink = document.createElement('a');
+
+                            subLinkContainer.className = 'subLink_container';
+
+                            announcementsLink.className = 'announcements_link';
+                            announcementsLink.style.padding = '0px 0.5rem 0px 0px';
+                            announcementsLink.innerHTML = `<i class="icon-announcement" aria-hidden="true"></i>`;
+                            announcementsLink.href = relativeLink + 'announcements';
+
+                            modulesLink.className = 'modules_link';
+                            modulesLink.style.padding = '0px 0.5rem 0px 0px';
+                            modulesLink.innerHTML = `<i class="icon-module" aria-hidden="true"></i>`;
+                            modulesLink.href = relativeLink + 'modules';
+
+                            usersLink.className = 'users_link';
+                            usersLink.style.padding = '0px 0.5rem 0px 0px';
+                            usersLink.innerHTML = `<i class="icon-user" aria-hidden="true"></i>`;
+                            usersLink.href = relativeLink + 'users';
+
+                            gradebookLink.className = 'gradebook_link';
+                            gradebookLink.style.padding = '0px 0.5rem 0px 0px';
+                            gradebookLink.innerHTML = `<i class="icon-gradebook" aria-hidden="true"></i>`;
+                            gradebookLink.href = relativeLink + 'gradebook';
+
+                            element.after(subLinkContainer);
+
+                            subLinkContainer.appendChild(announcementsLink);
+
+                            subLinkContainer.appendChild(modulesLink);
+
+                            subLinkContainer.appendChild(usersLink);
+
+                            subLinkContainer.appendChild(gradebookLink);
+
+                            observer.disconnect();
+                        } /*else {
+                            console.log(element + ' link is partially undefined. This is probably the All Courses link')
+                        }*/
+                        
+                        
+                    });            
+                }
+            }
+            // Create a new instance of MutationObserver with callback in params
+            const observer = new MutationObserver(callback);
+
+            // Setup configs -> Choose only one of these to avoid duplicate firing???
+            const configs = {
+                subtree: true,
+                childList: true
+            };
+
+            // When everything is ready, we just observe our target (navTray)
+            observer.observe(navTray, configs);
+        }
+    }
+  }
+
   function addWhatIfScoresButton() {
     if (typeof config.addWhatIfScoresButton !== 'undefined' && !config.addWhatIfScoresButton) {
       return;
@@ -2000,6 +2126,10 @@ function addCustomCSS() {
 
     .CodeMirror.cm-s-default.CodeMirror-wrap {
       min-height: 600px !important;
+    }
+    
+    .announcements_link:hover, .modules_link:hover, .users_link:hover, .gradebook_link:hover {
+        color: #E66135 !important;
     }`;
 
   var hideGradebookTooltipCSSCode = `
