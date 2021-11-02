@@ -7,7 +7,7 @@
 // @include     https://*.instructure.com/courses/*/quizzes/*/history?*
 // @include     https://*.instructure.com/*
 // @noframes
-// @version     5.2.09
+// @version     5.2.10
 // @grant       none
 // @require     https://cdnjs.cloudflare.com/ajax/libs/jquery/2.1.3/jquery.min.js
 // @updateURL   https://github.com/dslusser/PalcsUI-Canvancement/raw/master/install/palcs-ui-standalone.user.js
@@ -46,7 +46,8 @@
 
 
   // addGradePercentage adds a grade percent to the SpeedGrader
-  // addSgStudentNameGreeting adds a name copy icons to the SpeedGrader
+  // addSgStudentNameGreeting adds student and lesson name copy icons to the SpeedGrader
+  // addSgStudentNameGreeting also adds [[StudentName]] and [[LessonName]] short codes to the SpeedGrader
   // adjustBrowserThemeColor updates Safari 15+ (and Chrome Android App) theming
   // addSpecialGlobalNavLinks adds announcements, modules, users, and grades links to each Courses global nav item
   // addWhatIfScoresButton adds a What If Scores button to the Student Grades Page
@@ -1413,9 +1414,9 @@
                         } /*else {
                             console.log(element + ' link is partially undefined. This is probably the All Courses link')
                         }*/
-                        
-                        
-                    });            
+
+
+                    });
                 }
             }
             // Create a new instance of MutationObserver with callback in params
@@ -1631,11 +1632,13 @@ function addSgStudentNameGreeting() {
         //var SgTextArea = document.getElementById('speed_grader_comment_textarea_mount_point');
         //SgTextArea.firstElementChild.innerHTML += AddSgStudentNameGreetingLink;
 
-        var AddSgStudentNameGreetingLink = `<span id="SgGreetingContainer" style="padding: 0px 0px 0px 0.1rem;"><a href="JavaScript:void(0);" id="SgGreeting" style="text-decoration: none;" title="Add Student Name Greeting" alt="Add Student Name Greeting"><span>😬</span></a></span>`;
+        var AddSgStudentNameGreetingLink = `<span id="SgGreetingContainer" style="padding: 0px 0px 0px 0.1rem;"><a href="JavaScript:void(0);" id="SgGreeting" style="text-decoration: none;" title="In the Assignments Comments text box, add a greeting and the first name of the current student" alt="In the Assignments Comments text box, add a greeting and the first name of the current student"><span>😬</span></a></span>`;
 
-        var AddSgStudentNameSalutationLink = `<span id="SgSalutationContainer" style="padding: 0px 0px 0px 0.1rem;"><a href="JavaScript:void(0);" id="SgSalutation" style="text-decoration: none;" title="Add Student Name Salutation" alt="Add Student Name Salutation"><span>😃</span></a></span>`;
+        var AddSgStudentNameSalutationLink = `<span id="SgSalutationContainer" style="padding: 0px 0px 0px 0.1rem;"><a href="JavaScript:void(0);" id="SgSalutation" style="text-decoration: none;" title="In the Assignments Comments text box, add the first name of the current student and a salutation" alt="In the Assignments Comments text box, add the first name of the current student and a salutation"><span>😃</span></a></span>`;
 
-        var AddSgStudentNameShortCodeLink = `<span id="SgStudentNameShortCodeContainer" style="padding: 0px 0px 0px 0.1rem;"><a href="JavaScript:void(0);" id="SgStudentNameShortCode" style="text-decoration: none;" title="Replace Student Name Short Code" alt="Replace Student Name Short Code"><span>🤓</span></a></span>`;
+        var AddSgStudentNameShortCodeLink = `<span id="SgStudentNameShortCodeContainer" style="padding: 0px 0px 0px 0.1rem;"><a href="JavaScript:void(0);" id="SgStudentNameShortCode" style="text-decoration: none;" title="In the Assignments Comments text box, replace the [[StudentName]] Short Code with the first name of the current student" alt="In the Assignments Comments text box, replace the [[StudentName]] Short Code with the first name of the current student"><span>🤓</span></a></span>`;
+
+        var AddSgLessonNameShortCodeLink = `<span id="SgLessonNameShortCodeContainer" style="padding: 0px 0px 0px 0.1rem;"><a href="JavaScript:void(0);" id="SgLessonNameShortCode" style="text-decoration: none;" title="In the Assignments Comments text box, replace the [[LessonName]] Short Code with the title of the current lesson" alt="In the Assignments Comments text box, replace the [[LessonName]] Short Code with the title of the current lesson"><span>📄</span></a></span>`;
 
         const nameSpAdvance = document.querySelectorAll(("." + namespace + "_next"));
         //console.log(nameSpAdvance)
@@ -1644,11 +1647,15 @@ function addSgStudentNameGreeting() {
 
         if (!hasRubric) {
 
+          document.querySelectorAll('#rightside_inner .content_box h2')[1].innerHTML += AddSgLessonNameShortCodeLink;
+
           document.querySelectorAll('#rightside_inner .content_box h2')[1].innerHTML += AddSgStudentNameShortCodeLink;
 
           document.querySelectorAll('#rightside_inner .content_box h2')[1].innerHTML += AddSgStudentNameGreetingLink;
 
           document.querySelectorAll('#rightside_inner .content_box h2')[1].innerHTML += AddSgStudentNameSalutationLink;
+
+          document.getElementById("SgLessonNameShortCode").addEventListener("click", replaceSgLessonNameShortCode);
 
           document.getElementById("SgStudentNameShortCode").addEventListener("click", replaceSgStudentNameShortCode);
 
@@ -1656,39 +1663,41 @@ function addSgStudentNameGreeting() {
 
           document.getElementById("SgSalutation").addEventListener("click", addSgSalutation);
 
-          //document.getElementById("next-student-button").addEventListener("mouseover", replaceSgStudentNameShortCode);
+          //document.getElementById("next-student-button").addEventListener("mouseover", launchShortCodeReplacementFunctions);
 
-          //document.getElementById("prev-student-button").addEventListener("mouseover", replaceSgStudentNameShortCode);
+          //document.getElementById("prev-student-button").addEventListener("mouseover", launchShortCodeReplacementFunctions);
 
-          //document.getElementById("combo_box_container").addEventListener("mouseover", replaceSgStudentNameShortCode);
+          //document.getElementById("combo_box_container").addEventListener("mouseover", launchShortCodeReplacementFunctions);
 
           ['mouseover','ontouchstart','blur','click','focus'].forEach( evt =>
-            document.getElementById("next-student-button").addEventListener(evt, replaceSgStudentNameShortCode, false)
+            document.getElementById("next-student-button").addEventListener(evt, launchShortCodeReplacementFunctions, false)
           );
 
           ['mouseover','ontouchstart','blur','click','focus'].forEach( evt =>
-            document.getElementById("prev-student-button").addEventListener(evt, replaceSgStudentNameShortCode, false)
+            document.getElementById("prev-student-button").addEventListener(evt, launchShortCodeReplacementFunctions, false)
           );
 
           ['mouseover','ontouchstart','blur','click','focus'].forEach( evt =>
-            document.getElementById("combo_box_container").addEventListener(evt, replaceSgStudentNameShortCode, false)
+            document.getElementById("combo_box_container").addEventListener(evt, launchShortCodeReplacementFunctions, false)
           );
 
           ['mouseover','ontouchstart','blur','click','focus'].forEach( evt =>
-            document.getElementById("comment_submit_button").addEventListener(evt, replaceSgStudentNameShortCode, false)
+            document.getElementById("comment_submit_button").addEventListener(evt, launchShortCodeReplacementFunctions, false)
           );
 
           //const nameSpAdvance = document.querySelectorAll(("." + namespace + "_next"));
           for (let i = 0; i < nameSpAdvance.length; i++) {
-            nameSpAdvance[i].addEventListener('mouseover', replaceSgStudentNameShortCode, false);
-            nameSpAdvance[i].addEventListener('ontouchstart', replaceSgStudentNameShortCode, false);
-            nameSpAdvance[i].addEventListener('blur', replaceSgStudentNameShortCode, false);
-            nameSpAdvance[i].addEventListener('click', replaceSgStudentNameShortCode, false);
-            nameSpAdvance[i].addEventListener('focus', replaceSgStudentNameShortCode, false);
+            nameSpAdvance[i].addEventListener('mouseover', launchShortCodeReplacementFunctions, false);
+            nameSpAdvance[i].addEventListener('ontouchstart', launchShortCodeReplacementFunctions, false);
+            nameSpAdvance[i].addEventListener('blur', launchShortCodeReplacementFunctions, false);
+            nameSpAdvance[i].addEventListener('click', launchShortCodeReplacementFunctions, false);
+            nameSpAdvance[i].addEventListener('focus', launchShortCodeReplacementFunctions, false);
           };
 
 
         } else if (hasRubric) {
+
+          document.querySelectorAll('#rightside_inner .content_box h2')[4].innerHTML += AddSgLessonNameShortCodeLink;
 
           document.querySelectorAll('#rightside_inner .content_box h2')[4].innerHTML += AddSgStudentNameShortCodeLink;
 
@@ -1696,47 +1705,49 @@ function addSgStudentNameGreeting() {
 
           document.querySelectorAll('#rightside_inner .content_box h2')[4].innerHTML += AddSgStudentNameSalutationLink;
 
+          document.getElementById("SgLessonNameShortCode").addEventListener("click", replaceSgLessonNameShortCode);
+
           document.getElementById("SgStudentNameShortCode").addEventListener("click", replaceSgStudentNameShortCode);
 
           document.getElementById("SgGreeting").addEventListener("click", addSgGreeting);
 
           document.getElementById("SgSalutation").addEventListener("click", addSgSalutation);
 
-          //document.getElementById("next-student-button").addEventListener("mouseover", replaceSgStudentNameShortCode);
+          //document.getElementById("next-student-button").addEventListener("mouseover", launchShortCodeReplacementFunctions);
 
-          //document.getElementById("prev-student-button").addEventListener("mouseover", replaceSgStudentNameShortCode);
+          //document.getElementById("prev-student-button").addEventListener("mouseover", launchShortCodeReplacementFunctions);
 
-          //document.getElementById("combo_box_container").addEventListener("mouseover", replaceSgStudentNameShortCode);
+          //document.getElementById("combo_box_container").addEventListener("mouseover", launchShortCodeReplacementFunctions);
 
           //var rubricSaveButton = document.querySelector('div#rubric_holder button.save_rubric_button');
 
           ['mouseover','ontouchstart','blur','click','focus'].forEach( evt =>
-            document.querySelector('div#rubric_holder button.save_rubric_button').addEventListener(evt, replaceSgStudentNameShortCode, false)
+            document.querySelector('div#rubric_holder button.save_rubric_button').addEventListener(evt, launchShortCodeReplacementFunctions, false)
           );
 
           ['mouseover','ontouchstart','blur','click','focus'].forEach( evt =>
-            document.getElementById("next-student-button").addEventListener(evt, replaceSgStudentNameShortCode, false)
+            document.getElementById("next-student-button").addEventListener(evt, launchShortCodeReplacementFunctions, false)
           );
 
           ['mouseover','ontouchstart','blur','click','focus'].forEach( evt =>
-            document.getElementById("prev-student-button").addEventListener(evt, replaceSgStudentNameShortCode, false)
+            document.getElementById("prev-student-button").addEventListener(evt, launchShortCodeReplacementFunctions, false)
           );
 
           ['mouseover','ontouchstart','blur','click','focus'].forEach( evt =>
-            document.getElementById("combo_box_container").addEventListener(evt, replaceSgStudentNameShortCode, false)
+            document.getElementById("combo_box_container").addEventListener(evt, launchShortCodeReplacementFunctions, false)
           );
 
           ['mouseover','ontouchstart','blur','click','focus'].forEach( evt =>
-            document.getElementById("comment_submit_button").addEventListener(evt, replaceSgStudentNameShortCode, false)
+            document.getElementById("comment_submit_button").addEventListener(evt, launchShortCodeReplacementFunctions, false)
           );
 
           //const nameSpAdvance = document.querySelectorAll(("." + namespace + "_next"));
           for (let i = 0; i < nameSpAdvance.length; i++) {
-            nameSpAdvance[i].addEventListener('mouseover', replaceSgStudentNameShortCode, false);
-            nameSpAdvance[i].addEventListener('ontouchstart', replaceSgStudentNameShortCode, false);
-            nameSpAdvance[i].addEventListener('blur', replaceSgStudentNameShortCode, false);
-            nameSpAdvance[i].addEventListener('click', replaceSgStudentNameShortCode, false);
-            nameSpAdvance[i].addEventListener('focus', replaceSgStudentNameShortCode, false);
+            nameSpAdvance[i].addEventListener('mouseover', launchShortCodeReplacementFunctions, false);
+            nameSpAdvance[i].addEventListener('ontouchstart', launchShortCodeReplacementFunctions, false);
+            nameSpAdvance[i].addEventListener('blur', launchShortCodeReplacementFunctions, false);
+            nameSpAdvance[i].addEventListener('click', launchShortCodeReplacementFunctions, false);
+            nameSpAdvance[i].addEventListener('focus', launchShortCodeReplacementFunctions, false);
           };
 
 
@@ -1865,6 +1876,41 @@ function addSgStudentNameGreeting() {
 
       commentBoxTextArea.value = commentBoxTextAreaNewValue
 
+
+    }
+  }
+
+  function replaceSgLessonNameShortCode() {
+
+    if (speed_grader == 'speed_grader') {
+
+      var lessonName = document.querySelector('#assignment_url h2.assignmentDetails__Title').innerText
+
+      //console.log(lessonName)
+
+      var commentBoxTextArea = document.getElementById('speed_grader_comment_textarea')
+
+      var commentBoxTextAreaValue = commentBoxTextArea.value
+
+      const regex = /(\[{2}LessonName\]{2})/gm;
+
+      var commentBoxTextAreaNewValue = commentBoxTextAreaValue.replaceAll(regex, lessonName);
+
+      commentBoxTextArea.value = commentBoxTextAreaNewValue
+
+
+    }
+  }
+
+  function launchShortCodeReplacementFunctions() {
+
+    if (speed_grader == 'speed_grader') {
+
+
+      replaceSgStudentNameShortCode();
+      replaceSgLessonNameShortCode();
+
+      //console.log('launchShortCodeReplacementFunctions() launched')
 
     }
   }
@@ -2127,7 +2173,7 @@ function addCustomCSS() {
     .CodeMirror.cm-s-default.CodeMirror-wrap {
       min-height: 600px !important;
     }
-    
+
     .announcements_link:hover, .modules_link:hover, .users_link:hover, .gradebook_link:hover {
         color: #E66135 !important;
     }`;
