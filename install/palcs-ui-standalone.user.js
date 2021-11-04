@@ -7,9 +7,8 @@
 // @include     https://*.instructure.com/courses/*/quizzes/*/history?*
 // @include     https://*.instructure.com/*
 // @noframes
-// @version     5.2.10
+// @version     5.2.11
 // @grant       none
-// @require     https://cdnjs.cloudflare.com/ajax/libs/jquery/2.1.3/jquery.min.js
 // @updateURL   https://github.com/dslusser/PalcsUI-Canvancement/raw/master/install/palcs-ui-standalone.user.js
 // ==/UserScript==
 
@@ -1319,9 +1318,16 @@
 
     //console.log('addSpecialGlobalNavLinks() is running')
 
-    $(document).ready(function () {
+    /*$(document).ready(function () {
         addTheLinks();
-    }); //ORG Working Design
+    });*/ //ORG Working Design, but trying to remove JQuery, so commenting out for now ***
+
+    // NEW way of loading without jQuery
+    document.onreadystatechange = function () {
+        if (document.readyState === 'complete') {
+            addTheLinks();
+        }
+    }
 
 
     function addTheLinks(){
@@ -1484,13 +1490,14 @@
     }
     //console.log('addGradePercentage() is running');
 
-    $(document).ajaxStop(function () {
+    // This never gets called, so commenting it out for now ***
+    /*$(document).ajaxStop(function () {
       //var students_selectmenu = document.getElementById("students_selectmenu");
     //students_selectmenu.addEventListener("change", showGradePercentage);
       showGradePercentage();
       console.log("ajax has stopped");
 
-  });
+    });*/
 
   //Globals for Speed Grader and msisNav functions
   var getURLArray = document.URL.split(/\?(.+)?/)[0];
@@ -1499,10 +1506,45 @@
   var header = document.getElementById('header');
   var pointPercentNumberFired = false; //NEW for Debugging
 
-  $(document).ready(function(){setupPercentContainers();}); //ORG Working Design
-  //window.onload = setupPercentContainers(); //NEW kinda working design paired with above function
-  //window.onload = showGradePercentage(); //ORG Working Design
-  $(document).ready(function(){showGradePercentage();}); //NEW Working Design paired with ORG setupPercentContainers()
+  //$(document).ready(function(){setupPercentContainers();}); //ORG (and CURRENT) Working Design, *** trying to remove Jquery, so commenting this out for now ***
+  //window.onload = setupPercentContainers(); //NEW kinda working design paired with above function (not currently using)
+  //window.onload = showGradePercentage(); //ORG Working Design (not currently using)
+  //$(document).ready(function(){showGradePercentage();}); //NEW (and CURRENT) Working Design paired with ORG setupPercentContainers(), *** trying to remove Jquery, so commenting this out for now ***
+
+  // NEW Trying to remove JQuery, so using this loading method instead
+  /*document.onreadystatechange = function () {
+    if (document.readyState === 'complete') {
+        setupPercentContainers();
+        showGradePercentage();
+    }
+  };*/
+
+  // This is a unique alternative, and seems to be working, but perhaps not the best way to do it
+  /*function r(f){/in/.test(document.readyState)?setTimeout(r,9,f):f()}
+  r(function(){setupPercentContainers();showGradePercentage();});*/
+
+
+  // NEW Let's stick with this $document.ready, JQuery-less alternative for now.
+  function mycallback() {
+    setupPercentContainers();
+    showGradePercentage();
+  }
+  //...
+  (function() {
+    if (window.addEventListener) {
+      addEventListener("load", mycallback); //standard
+    } else if (window.attachEvent) {
+      attachEvent("onload", mycallback); //IE
+    } else { //fallback method
+      var oldCb = onload;
+      onload = function() {
+        if (oldCb) oldCb();
+        mycallback();
+      };
+    }
+  })();
+
+  //These don't really get used, they're more for options, but I'm leaving them here for now
   //window.onload = setupPercentContainers();
   //$(window).on('load', setupPercentContainers);
   //$(document).ready(function(){setupPercentContainers()});
@@ -1543,9 +1585,23 @@
 
       //$('#students_selectmenu').on( 'keyup blur keypress change click mousedown', showGradePercentage);
 
-      $('#grading-box-extended').on('keyup blur keypress change', showGradePercentage);
-      $('#next-student-button').on('click mousedown', showGradePercentage);
-      $('#prev-student-button').on('click mousedown', showGradePercentage);
+      // Trying to remove JQuery, so commenting the following three eventListeners out for now
+      //$('#grading-box-extended').on('keyup blur keypress change', showGradePercentage); //*** 
+      //$('#next-student-button').on('click mousedown', showGradePercentage); //*** 
+      //$('#prev-student-button').on('click mousedown', showGradePercentage); //*** 
+
+      // New way of adding the eventListeners without JQuery
+      ['keyup','blur','keypress','change'].forEach( evt =>
+        document.getElementById("grading-box-extended").addEventListener(evt, showGradePercentage, false)
+      );
+
+      ['click','mousedown','ontouchstart'].forEach( evt =>
+        document.getElementById("next-student-button").addEventListener(evt, showGradePercentage, false)
+      );
+
+      ['click','mousedown','ontouchstart'].forEach( evt =>
+        document.getElementById("prev-student-button").addEventListener(evt, showGradePercentage, false)
+      );
 
 
       //Setup mutation observer on the student list to fire showGradePercentage() on student change via student list
@@ -1618,7 +1674,14 @@ function addSgStudentNameGreeting() {
   var pointPercentNumberFired = false; //NEW for Debugging
   var hasRubric = document.getElementById('rubric_full');
 
-  $(document).ready(function(){setupAddSgStudentNameGreetingContainers();}); //ORG Working Design
+  //$(document).ready(function(){setupAddSgStudentNameGreetingContainers();}); //ORG Working Design with JQuery, trying to remove JQuery, so commenting out for now ***
+
+  // NEW way of loading without JQuery
+  document.onreadystatechange = function () {
+    if (document.readyState === 'complete') {
+        setupAddSgStudentNameGreetingContainers();
+    }
+  };  
 
   function setupAddSgStudentNameGreetingContainers() {
 
@@ -1930,9 +1993,37 @@ function adjustExternalToolBox() {
     var assignments = parseURL[5];
     var edit = parseURL[7];
 
-    $(document).ready(function () {
+    /*$(document).ready(function () {
         setupAdjustExternalToolBoxContainers();
-    }); //ORG Working Design
+    });*/ //ORG Working Design, trying to remove JQuery, so commenting it ouf for now ***
+
+    // NEW design without JQuery...Actually, NVM, we're going with setTimeout instead. The DOM is goofy.
+    //document.onreadystatechange = function () {
+    //    if (document.readyState === 'complete') {
+            //setTimeout(function () {
+            //    setupAdjustExternalToolBoxContainers();
+            //}, 5000);
+    //    }
+    //}
+
+    // NEW NEW design without JQuery...The super DOM is goofy. No setTimeout needed. This is the way.
+    function mycallback() {
+        setupAdjustExternalToolBoxContainers();
+    }
+    //...
+    (function() {
+    if (window.addEventListener) {
+        addEventListener("load", mycallback); //standard
+    } else if (window.attachEvent) {
+        attachEvent("onload", mycallback); //IE
+    } else { //fallback method
+        var oldCb = onload;
+        onload = function() {
+        if (oldCb) oldCb();
+        mycallback();
+        };
+    }
+    })();
 
     function setupAdjustExternalToolBoxContainers() {
 
