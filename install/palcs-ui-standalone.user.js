@@ -7,7 +7,7 @@
 // @include     https://*.instructure.com/courses/*/quizzes/*/history?*
 // @include     https://*.instructure.com/*
 // @noframes
-// @version     5.2.11
+// @version     5.2.12
 // @grant       none
 // @updateURL   https://github.com/dslusser/PalcsUI-Canvancement/raw/master/install/palcs-ui-standalone.user.js
 // ==/UserScript==
@@ -30,6 +30,7 @@
     'nextRubricExpanded' : true,
     'addGradePercentage' : true,
     'addSgStudentNameGreeting' : true,
+    'awardFullPointsAndNext' : true,
     'adjustBrowserThemeColor' : true,
     'addSpecialGlobalNavLinks' : true,
     'addWhatIfScoresButton' : true,
@@ -47,6 +48,7 @@
   // addGradePercentage adds a grade percent to the SpeedGrader
   // addSgStudentNameGreeting adds student and lesson name copy icons to the SpeedGrader
   // addSgStudentNameGreeting also adds [[StudentName]] and [[LessonName]] short codes to the SpeedGrader
+  // awardFullPointsAndNext adds a button to SpeedGrader to award full points, submit comments, and move to the next student
   // adjustBrowserThemeColor updates Safari 15+ (and Chrome Android App) theming
   // addSpecialGlobalNavLinks adds announcements, modules, users, and grades links to each Courses global nav item
   // addWhatIfScoresButton adds a What If Scores button to the Student Grades Page
@@ -152,6 +154,7 @@
         'nextRubricExpanded' : true,
         'addGradePercentage' : true,
         'addSgStudentNameGreeting' : true,
+        'awardFullPointsAndNext' : true,
         'adjustBrowserThemeColor' : true,
         'addSpecialGlobalNavLinks' : true,
         'addWhatIfScoresButton' : true,
@@ -196,8 +199,10 @@
 
     if (/^\/courses\/[0-9]+\/gradebook\/speed_grader$/.test(window.location.pathname)) {
         //console.log('we are at speed_grader');
+        isSG = true;
         addGradePercentage();
         addSgStudentNameGreeting();
+        addAwardFullPointsAndNext();
     }
 
     // This try/catch gave issues on previous versions, if issues persist, comment out
@@ -1586,9 +1591,9 @@
       //$('#students_selectmenu').on( 'keyup blur keypress change click mousedown', showGradePercentage);
 
       // Trying to remove JQuery, so commenting the following three eventListeners out for now
-      //$('#grading-box-extended').on('keyup blur keypress change', showGradePercentage); //*** 
-      //$('#next-student-button').on('click mousedown', showGradePercentage); //*** 
-      //$('#prev-student-button').on('click mousedown', showGradePercentage); //*** 
+      //$('#grading-box-extended').on('keyup blur keypress change', showGradePercentage); //***
+      //$('#next-student-button').on('click mousedown', showGradePercentage); //***
+      //$('#prev-student-button').on('click mousedown', showGradePercentage); //***
 
       // New way of adding the eventListeners without JQuery
       ['keyup','blur','keypress','change'].forEach( evt =>
@@ -1681,7 +1686,7 @@ function addSgStudentNameGreeting() {
     if (document.readyState === 'complete') {
         setupAddSgStudentNameGreetingContainers();
     }
-  };  
+  };
 
   function setupAddSgStudentNameGreetingContainers() {
 
@@ -2100,6 +2105,60 @@ function adjustExternalToolBox() {
         }
     }
 }
+
+  function addAwardFullPointsAndNext() {
+    if (isSG && typeof config.awardFullPointsAndNext !== 'undefined' && config.awardFullPointsAndNext) {
+      var gradingBox = document.querySelector('input#grading-box-extended');
+      if (gradingBox) {
+        var parent = gradingBox.parentNode;
+        if (parent) {
+          var advance = advanceButton(awardFullPointsAndNext, {
+            'title' : 'Award full points, submit any comments, and advance to next user'
+          });
+          //gradingBox.title = 'Save rubric and stay on this user';
+          advance.style.marginLeft = '3px';
+          parent.insertBefore(advance, gradingBox.nextSibling);
+        }
+      }
+    }
+  }
+
+  function awardFullPointsAndNext() {
+    var gradingBox = document.querySelector('input#grading-box-extended');
+    if (gradingBox) {
+
+      //var studentGrade = parseFloat(document.getElementById('grading-box-extended').value, 10);
+      var assignmentValue = parseFloat(document.getElementById('grade_container').innerText.split(/(\d+)/g)[1], 10);
+
+      var studentGradeBox = document.getElementById('grading-box-extended');
+      //console.log('Original value = ' + studentGradeBox.value);
+      studentGradeBox.value = assignmentValue;
+      studentGradeBox.setAttribute('value', studentGradeBox.value);
+      //console.log('New value = ' + studentGradeBox.value);
+
+      if (isNaN(assignmentValue)) {
+        console.log('Assignment Value is not a number');
+      }
+
+      advanceUser = true;
+      advanceSrc = 'grade';
+      gradingBox.dispatchEvent(new Event('change', {
+        'bubbles' : true
+      }));
+
+      // This is for the saving of the comments. Should advanceUser be true or false??? Does it matter???
+      // If we get any collisions with the grade or comments, remove this code.
+      var btn = document.getElementById('comment_submit_button');
+      if (btn) {
+        advanceUser = true;
+        advanceSrc = 'comment';
+        btn.dispatchEvent(new Event('click', {
+          'bubbles' : true
+        }));
+      }
+      nextUser();
+    }
+  }
 
 
 
