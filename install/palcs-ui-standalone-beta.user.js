@@ -7,7 +7,7 @@
 // @include     https://*.instructure.com/courses/*/quizzes/*/history?*
 // @include     https://*.instructure.com/*
 // @noframes
-// @version     5.2.14
+// @version     5.2.13
 // @grant       none
 // @updateURL   https://github.com/dslusser/PalcsUI-Canvancement/raw/master/install/palcs-ui-standalone-beta.user.js
 // ==/UserScript==
@@ -181,7 +181,6 @@
     var isQuiz = document.body.classList.contains('quizzes');
     var isCanvas = false;
     var isUsersPage = false;
-    var isAdminUsersPage = false;
     var QT;
     var D = document;
     var advanceUser = false;
@@ -212,12 +211,6 @@
         isUsersPage = true;
         addPalcschoolProfileLinks();
     }
-
-    if (/^\/accounts\/[0-9]+\/users$/.test(window.location.pathname)) {
-      //console.log('we are at users page');
-      isAdminUsersPage = true;
-      addPalcschoolProfileLinks();
-  }
 
     if (/^\/courses\/[0-9]+\/gradebook\/speed_grader$/.test(window.location.pathname)) {
         //console.log('we are at speed_grader');
