@@ -1,5 +1,5 @@
 // ==UserScript==
-// @name        PalcsUI : Standalone : BETA
+// @name        PalcsUI : Standalone : BETA : OFFLINE
 // @author      Dan Slusser
 // @namespace   https://github.com/dslusser/PalcsUI-Canvancement
 // @description User enhancements for the Palcs Canvas instance
@@ -7,7 +7,7 @@
 // @include     https://*.instructure.com/courses/*/quizzes/*/history?*
 // @include     https://*.instructure.com/*
 // @noframes
-// @version     5.2.13
+// @version     5.2.13.02
 // @grant       none
 // @updateURL   https://github.com/dslusser/PalcsUI-Canvancement/raw/master/install/palcs-ui-standalone-beta.user.js
 // ==/UserScript==
@@ -1569,28 +1569,28 @@
         document.querySelectorAll('#content div table tbody tr td:nth-child(3)').forEach(function(element) {
 
             var a = element.getElementsByTagName('a')[0];
-        
+
             if (element.contains(a)) {
                 //console.log('contains a link already');
                 return;
             } else if (!element.contains(a) && element.previousElementSibling.innerText.includes(`stu.${EmailPlatform}.org`)) {
-        
+
                 var sisID = element.innerText;
                 //console.log(sisID)
                 //console.log(element.innerHTML)
-        
+
                 var sisLink = `https://www.${SISPlatform}.org/${LMSMSIS}/${SISPlatformVersion}/students/profile/profile.php?sid=`
                 sisLink += sisID;
                 //console.log(sisLink);
-        
-        
+
+
                 var sisIDLink = `<a href="${sisLink}" target="_blank" alt="Palcs Student Profile" title="Palcs Student Profile">${sisID}</a>`;
                 //console.log(sisIDLink);
-        
+
                 element.innerHTML = sisIDLink;
             }
-        
-        
+
+
         });
 
     }
@@ -2685,7 +2685,12 @@ function addCustomCSS() {
     }
 
     .announcements_link:hover, .modules_link:hover, .users_link:hover, .gradebook_link:hover {
-        color: #E66135 !important;
+      color: #E66135 !important;
+    }
+
+    .menu-item__badge {
+      background-color: #E66135;
+      color: #fff;
     }`;
 
   var hideGradebookTooltipCSSCode = `
