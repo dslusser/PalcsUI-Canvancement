@@ -1,5 +1,5 @@
 // ==UserScript==
-// @name        PalcsUI : Standalone : BETA : OFFLINE
+// @name        PalcsUI : Standalone : BETA
 // @author      Dan Slusser
 // @namespace   https://github.com/dslusser/PalcsUI-Canvancement
 // @description User enhancements for the Palcs Canvas instance
