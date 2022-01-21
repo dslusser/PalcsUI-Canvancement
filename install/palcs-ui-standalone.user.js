@@ -7,7 +7,7 @@
 // @include     https://*.instructure.com/courses/*/quizzes/*/history?*
 // @include     https://*.instructure.com/*
 // @noframes
-// @version     5.2.12
+// @version     5.2.13
 // @grant       none
 // @updateURL   https://github.com/dslusser/PalcsUI-Canvancement/raw/master/install/palcs-ui-standalone.user.js
 // ==/UserScript==
@@ -34,6 +34,8 @@
     'adjustBrowserThemeColor' : true,
     'addSpecialGlobalNavLinks' : true,
     'addWhatIfScoresButton' : true,
+    'addPalcschoolProfileLinks' : true,
+    'addGlobalPalcschoolProfileLinks' : true,
     'addCustomCSS' : true,
     'boxResizerCSS' : true,
     'adjustExternalToolBox' : true,
@@ -52,6 +54,8 @@
   // adjustBrowserThemeColor updates Safari 15+ (and Chrome Android App) theming
   // addSpecialGlobalNavLinks adds announcements, modules, users, and grades links to each Courses global nav item
   // addWhatIfScoresButton adds a What If Scores button to the Student Grades Page
+  // addPalcschoolProfileLinks adds Palcschool Profile links to the People (aka. Users) Page
+  // addGlobalPalcschoolProfileLinks adds Palcschool Profile links to the Global People (aka. Users) Page
   // boxResizerCSS adjusts the height of some of the small text boxes in Canvas
   // adjustExternalToolBox adjusts the height and width of the Assignment External Tool box
   // hideGradebookTooltipCSS hides the obtrusive tooltip in the Gradebook
@@ -158,6 +162,8 @@
         'adjustBrowserThemeColor' : true,
         'addSpecialGlobalNavLinks' : true,
         'addWhatIfScoresButton' : true,
+        'addPalcschoolProfileLinks' : true,
+        'addGlobalPalcschoolProfileLinks' : true,
         'addCustomCSS' : true,
         'boxResizerCSS' : true,
         'adjustExternalToolBox' : true,
@@ -169,9 +175,16 @@
     }
 
     var namespace = 'palcsui';
+    var LMSMSIS = 'moodle';
+    var SISPlatform = 'palcschool';
+    var SISPlatformVersion = 'palcs20';
+    var EmailPlatform = 'palcsmail';
+    var LMSPlatform = 'canvas';
     var isSG = false;
     var isQuiz = document.body.classList.contains('quizzes');
     var isCanvas = false;
+    var isUsersPage = false;
+    var isGlobalUsersPage = false;
     var QT;
     var D = document;
     var advanceUser = false;
@@ -195,6 +208,18 @@
     if (/^\/courses\/[0-9]+\/grades\/[0-9]+$/.test(window.location.pathname)) {
         //console.log('we are at student grades page');
         addWhatIfScoresButton();
+    }
+
+    if (/^\/courses\/[0-9]+\/users$/.test(window.location.pathname)) {
+        //console.log('we are at users page');
+        isUsersPage = true;
+        addPalcschoolProfileLinks();
+    }
+
+    if (/^\/accounts\/[0-9]+\/users$/.test(window.location.pathname)) {
+        //console.log('we are at users page');
+        isGlobalUsersPage = true;
+        addGlobalPalcschoolProfileLinks();
     }
 
     if (/^\/courses\/[0-9]+\/gradebook\/speed_grader$/.test(window.location.pathname)) {
@@ -1316,6 +1341,341 @@
     }
   }
 
+  function addPalcschoolProfileLinks() {
+    if (typeof config.addPalcschoolProfileLinks !== 'undefined' && !config.addPalcschoolProfileLinks) {
+      return;
+    }
+
+    var getURLArray = document.URL.split(/\?(.+)?/)[0];
+    var parseURL = getURLArray.split('/');
+    var usersLink = parseURL[5];
+
+    //console.log('addPalcschoolProfileLinks() is running')
+
+    /*$(document).ready(function () {
+        addThePSPLinksEvents();
+    });*/ //ORG Working Design, but trying to remove JQuery, so commenting out for now ***
+
+    // NEW way of loading without jQuery
+    // https://dmitripavlutin.com/catch-the-xmlhttp-request-in-plain-javascript/
+    // https://coderedirect.com/questions/140422/javascript-detect-ajax-requests
+    // onreadystatechange
+
+    // This is a unique alternative, and seems to be working, but perhaps not the best way to do it
+    /*function r(f){/in/.test(document.readyState)?setTimeout(r,9,f):f()}
+    r(function(){addThePSPLinksEvents();});*/
+
+    // Collision with other loading scripts, so commenting out for now
+    /*document.onreadystatechange = function () {
+        if (document.readyState === 'complete') {
+            setTimeout(function(){addThePSPLinks(); addThePSPLinksEvents();}, 5000);
+            //addThePSPLinksEvents();
+        }
+    }*/
+
+    // Load the functions without jQuery
+
+    function mycallback() {
+        setTimeout(function(){addThePSPLinks(); addThePSPLinksEvents();}, 5000);
+    }
+      //...
+      (function() {
+        if (window.addEventListener) {
+          addEventListener("load", mycallback); //standard
+        } else if (window.attachEvent) {
+          attachEvent("onload", mycallback); //IE
+        } else { //fallback method
+          var oldCb = onload;
+          onload = function() {
+            if (oldCb) oldCb();
+            mycallback();
+          };
+        }
+    })();
+
+    function addThePSPLinks(){
+
+        // This function adds the Palcschool Profile Links to the page
+        //console.log('addThePSPLinks() fired');
+
+        document.querySelectorAll('.rosterUser.al-hover-container.StudentEnrollment td:nth-child(4)').forEach(function(element) {
+
+            var a = element.getElementsByTagName('a')[0];
+
+            if (element.contains(a)) {
+                //console.log('contains a link already');
+                return;
+            } else if (!element.contains(a) && element.previousElementSibling.innerText.includes(`stu.${EmailPlatform}.org`)) {
+
+                var sisID = element.innerText;
+                //console.log(sisID)
+                //console.log(element.innerHTML)
+
+                var sisLink = `https://www.${SISPlatform}.org/${LMSMSIS}/${SISPlatformVersion}/students/profile/profile.php?sid=`
+                sisLink += sisID;
+                //console.log(sisLink);
+
+
+                var sisIDLink = `<a href="${sisLink}" target="_blank" alt="Palcs Student Profile" title="Palcs Student Profile">${sisID}</a>`;
+                //console.log(sisIDLink);
+
+                element.innerHTML = sisIDLink;
+            }
+
+
+        });
+
+    }
+
+
+    function addThePSPLinksEvents(){
+        //console.log('addThePSPLinksEvents() fired')
+
+        var usersTable = document.querySelectorAll(`div[data-view="users"]`)[0];
+        if (usersTable) {
+            //console.log('usersTable is true')
+            // If the mutationObserver is working properly, we don't need to add the EventListeners
+            // If we find that the mutationObserver is not working properly, we will need to add the EventListeners as a backup
+            // Leaving the EventListeners commented out for now
+            /*['mouseover','ontouchstart','blur','focus'].forEach( evt =>
+                usersTable.addEventListener(evt, addThePSPLinks, false)
+              );*/
+            //console.log('usersTable addEventListeners added');
+            visibilityObserverLauncher();
+            //console.log('visibilityObserverLauncher() has been launched');
+            //console.log('addThePSPLinksEvents() called bc usersTable is true');
+        }
+
+        function visibilityObserverLauncher(){
+            //console.log('visibilityObserverLauncher() fired')
+            visibilityObserver();
+        }
+
+        function visibilityObserver(){
+
+            const usersTableHeading = document.querySelectorAll(`div[data-view="users"] table thead`)[0];
+            const usersTableDiv = document.querySelectorAll(`div[data-view="users"] table tbody`)[0];
+
+            // The searchBox adds/removes a "loading" class each time a search is performed, or
+            // a scroll activates more students to be dynamically loaded into the table.
+            // We can use this behavior to determine each time new students are loaded into the table,
+            // and then we can fire the addThePSPLinks() function which adds the Palcschool profile
+            // links to the table.
+            const searchBox = document.querySelectorAll(`input[name="search_term"]`)[0];
+            //console.log('visibilityObserver() is executing');
+            function testTableHeadings(){
+                var result = false;
+                //console.log('result = ' + result);
+                if (usersTableHeading.innerText.includes('SIS ID')){
+                    result = true;
+                    //console.log('result = ' + result);
+                    //return false; //We found what we needed, no need to keep looping
+                }
+                //console.log('result is now = ' + result);
+                return result;
+            }
+            testTableHeadings();
+
+            // Callback function when changes occurs
+            function callback(mutationsList, observer) {
+                //console.log('callback() fired');
+
+                if (testTableHeadings()) {
+                    //console.log('testTableHeaderings() is true, Users table is present');
+
+                    mutationsList.forEach(mutation => {
+                        if (mutation.attributeName === 'class') {
+                            addThePSPLinks();
+                        }
+                    })
+
+                    // Normally we disconnect the observer, but we don't need to do that for this script
+                    //observer.disconnect();
+                }
+            }
+            // Create a new instance of MutationObserver with callback in params
+            const observer = new MutationObserver(callback);
+
+            // Setup configs -> Choose only one of these to avoid duplicate firing???
+            // Tried subtree, nothing much changes
+            const configs = {
+                attributes: true
+            };
+
+            // When everything is ready, we just observe our target (usersTableDiv)
+            observer.observe(searchBox, configs);
+        }
+    }
+  }
+
+  function addGlobalPalcschoolProfileLinks() {
+    if (typeof config.addGlobalPalcschoolProfileLinks !== 'undefined' && !config.addGlobalPalcschoolProfileLinks) {
+      return;
+    }
+
+    var getURLArray = document.URL.split(/\?(.+)?/)[0];
+    var parseURL = getURLArray.split('/');
+    var usersLink = parseURL[5];
+
+    //console.log('addPalcschoolProfileLinks() is running')
+
+    /*$(document).ready(function () {
+        addTheGlobalPSPLinksEvents();
+    });*/ //ORG Working Design, but trying to remove JQuery, so commenting out for now ***
+
+    // NEW way of loading without jQuery
+    // https://dmitripavlutin.com/catch-the-xmlhttp-request-in-plain-javascript/
+    // https://coderedirect.com/questions/140422/javascript-detect-ajax-requests
+    // onreadystatechange
+
+    // This is a unique alternative, and seems to be working, but perhaps not the best way to do it
+    /*function r(f){/in/.test(document.readyState)?setTimeout(r,9,f):f()}
+    r(function(){addTheGlobalPSPLinksEvents();});*/
+
+    // Collision with other loading scripts, so commenting out for now
+    /*document.onreadystatechange = function () {
+        if (document.readyState === 'complete') {
+            setTimeout(function(){addTheGlobalPSPLinks(); addTheGlobalPSPLinksEvents();}, 5000);
+            //addTheGlobalPSPLinksEvents();
+        }
+    }*/
+
+    // Load the functions without jQuery
+
+    function mycallback() {
+        setTimeout(function(){addTheGlobalPSPLinks(); addTheGlobalPSPLinksEvents();}, 2000);
+        // If 2000ms is too short, we can increase it to 3000ms
+    }
+      //...
+      (function() {
+        if (window.addEventListener) {
+          addEventListener("load", mycallback); //standard
+        } else if (window.attachEvent) {
+          attachEvent("onload", mycallback); //IE
+        } else { //fallback method
+          var oldCb = onload;
+          onload = function() {
+            if (oldCb) oldCb();
+            mycallback();
+          };
+        }
+    })();
+
+    function addTheGlobalPSPLinks(){
+
+        // This function adds the Palcschool Profile Links to the page
+        //console.log('addTheGlobalPSPLinks() fired');
+
+        document.querySelectorAll('#content div table tbody tr td:nth-child(3)').forEach(function(element) {
+
+            var a = element.getElementsByTagName('a')[0];
+
+            if (element.contains(a)) {
+                //console.log('contains a link already');
+                return;
+            } else if (!element.contains(a) && element.previousElementSibling.innerText.includes(`stu.${EmailPlatform}.org`)) {
+
+                var sisID = element.innerText;
+                //console.log(sisID)
+                //console.log(element.innerHTML)
+
+                var sisLink = `https://www.${SISPlatform}.org/${LMSMSIS}/${SISPlatformVersion}/students/profile/profile.php?sid=`
+                sisLink += sisID;
+                //console.log(sisLink);
+
+
+                var sisIDLink = `<a href="${sisLink}" target="_blank" alt="Palcs Student Profile" title="Palcs Student Profile">${sisID}</a>`;
+                //console.log(sisIDLink);
+
+                element.innerHTML = sisIDLink;
+            }
+
+
+        });
+
+    }
+
+
+    function addTheGlobalPSPLinksEvents(){
+        //console.log('addTheGlobalPSPLinksEvents() fired')
+
+        var usersTable = document.querySelector('#content div table');
+        if (usersTable) {
+            //console.log('usersTable is true')
+            // If the mutationObserver is working properly, we don't need to add the EventListeners
+            // If we find that the mutationObserver is not working properly, we will need to add the EventListeners as a backup
+            // Leaving the EventListeners commented out for now
+            /*['mouseover','ontouchstart','blur','focus'].forEach( evt =>
+                usersTable.addEventListener(evt, addTheGlobalPSPLinks, false)
+              );*/
+            //console.log('usersTable addEventListeners added');
+            visibilityObserverLauncher();
+            //console.log('visibilityObserverLauncher() has been launched');
+            //console.log('addTheGlobalPSPLinksEvents() called bc usersTable is true');
+        }
+
+        function visibilityObserverLauncher(){
+            //console.log('visibilityObserverLauncher() fired')
+            visibilityObserver();
+        }
+
+        function visibilityObserver(){
+
+            const usersTableHeading = document.querySelector('#content div table thead');
+            const usersTableContainer = document.querySelector('#content');
+
+            // The usersTableContainer adds/removes children each time a search is performed or the page is loaded.
+            // We can use this behavior to determine each time new students are loaded into the table,
+            // and then we can fire the addTheGlobalPSPLinks() function which adds the Palcschool profile
+            // links to the table.
+            //console.log('visibilityObserver() is executing');
+            function testTableHeadings(){
+                var result = false;
+                //console.log('result = ' + result);
+                if (usersTableHeading.innerText.includes('SIS ID')){
+                    result = true;
+                    //console.log('result = ' + result);
+                    //return false; //We found what we needed, no need to keep looping
+                }
+                //console.log('result is now = ' + result);
+                return result;
+            }
+            testTableHeadings();
+
+            // Callback function when changes occurs
+            function callback(mutationRecord, observer) {
+                //console.log('callback() fired');
+
+                if (testTableHeadings()) {
+                    //console.log('testTableHeaderings() is true, Users table is present');
+
+                    mutationRecord.forEach(mutation => {
+                        if (mutation.type === 'childList') {
+                            //console.log('table changed');
+                            addTheGlobalPSPLinks();
+                        }
+                    })
+
+                    // Normally we disconnect the observer, but we don't need to do that for this script
+                    //observer.disconnect();
+                }
+            }
+            // Create a new instance of MutationObserver with callback in params
+            const observer = new MutationObserver(callback);
+
+            // Setup configs -> Choose only one of these to avoid duplicate firing???
+            // Tried subtree, nothing much changes
+            const configs = {
+                childList: true,
+                subtree: true,
+            };
+
+            // When everything is ready, we just observe our target (usersTableDiv)
+            observer.observe(usersTableContainer, configs);
+        }
+    }
+  }
+
   function addSpecialGlobalNavLinks() {
     if (typeof config.addSpecialGlobalNavLinks !== 'undefined' && !config.addSpecialGlobalNavLinks) {
       return;
@@ -2325,7 +2685,12 @@ function addCustomCSS() {
     }
 
     .announcements_link:hover, .modules_link:hover, .users_link:hover, .gradebook_link:hover {
-        color: #E66135 !important;
+      color: #E66135 !important;
+    }
+
+    .menu-item__badge {
+      background-color: #E66135;
+      color: #fff;
     }`;
 
   var hideGradebookTooltipCSSCode = `
