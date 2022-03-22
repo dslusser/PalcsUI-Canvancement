@@ -7,7 +7,7 @@
 // @include     https://*.instructure.com/courses/*/quizzes/*/history?*
 // @include     https://*.instructure.com/*
 // @noframes
-// @version     5.2.13.02
+// @version     5.2.14.01
 // @grant       none
 // @updateURL   https://github.com/dslusser/PalcsUI-Canvancement/raw/master/install/palcs-ui-standalone-beta.user.js
 // ==/UserScript==
@@ -34,6 +34,7 @@
     'adjustBrowserThemeColor' : true,
     'addSpecialGlobalNavLinks' : true,
     'addWhatIfScoresButton' : true,
+    'addSpeedGraderSubmissionLinks' : true,
     'addPalcschoolProfileLinks' : true,
     'addGlobalPalcschoolProfileLinks' : true,
     'addCustomCSS' : true,
@@ -54,6 +55,7 @@
   // adjustBrowserThemeColor updates Safari 15+ (and Chrome Android App) theming
   // addSpecialGlobalNavLinks adds announcements, modules, users, and grades links to each Courses global nav item
   // addWhatIfScoresButton adds a What If Scores button to the Student Grades Page
+  // addSpeedGraderSubmissionLinks adds direct links to the SpeedGrader submission page for each assignment
   // addPalcschoolProfileLinks adds Palcschool Profile links to the People (aka. Users) Page
   // addGlobalPalcschoolProfileLinks adds Palcschool Profile links to the Global People (aka. Users) Page
   // boxResizerCSS adjusts the height of some of the small text boxes in Canvas
@@ -162,6 +164,7 @@
         'adjustBrowserThemeColor' : true,
         'addSpecialGlobalNavLinks' : true,
         'addWhatIfScoresButton' : true,
+        'addSpeedGraderSubmissionLinks' : true,
         'addPalcschoolProfileLinks' : true,
         'addGlobalPalcschoolProfileLinks' : true,
         'addCustomCSS' : true,
@@ -208,6 +211,7 @@
     if (/^\/courses\/[0-9]+\/grades\/[0-9]+$/.test(window.location.pathname)) {
         //console.log('we are at student grades page');
         addWhatIfScoresButton();
+        addSpeedGraderSubmissionLinks();
     }
 
     if (/^\/courses\/[0-9]+\/users$/.test(window.location.pathname)) {
@@ -1847,6 +1851,42 @@
             });
         }
     });
+  }
+
+  function addSpeedGraderSubmissionLinks() {
+    if (typeof config.addSpeedGraderSubmissionLinks !== 'undefined' && !config.addSpeedGraderSubmissionLinks) {
+      return;
+    }
+
+    // Define the studentAssignment variable
+    var studentAssignment = document.getElementsByClassName('student_assignment');
+
+    // Loop through the studentAssignment elements, adding the SpeedGrader submission links to each assignment instance
+    for (var i=0; i<studentAssignment.length; i++) {
+        if (studentAssignment[i].firstElementChild.firstElementChild !== null){
+            //console.log('element exists ' + studentAssignment[i].firstElementChild.firstElementChild.href);
+            //console.log('details ' + studentAssignment[i].lastElementChild);
+
+            // Define the assignmentLink and assignmentLinkArray variables
+            var assignmentLink = studentAssignment[i].firstElementChild.firstElementChild.href;
+            var assignmentLinkArray = assignmentLink.split('/');
+
+            // Build the speedGraderLink
+            var speedGraderLink = window.location.origin + '/courses/' + assignmentLinkArray[4] + '/gradebook/speed_grader?assignment_id=' + assignmentLinkArray[6] + '&student_id=' + assignmentLinkArray[8];
+
+            // Create the speedGraderContainer div and define its various attributes
+            var speedGraderContainer = document.createElement('div');
+            speedGraderContainer.className = 'speed_grader_container';
+            speedGraderContainer.style.display = 'inline-block';
+            speedGraderContainer.style.marginRight = '4px';
+            speedGraderContainer.style.zIndex = '10';
+            speedGraderContainer.innerHTML = '<a href="' + speedGraderLink + '" alt="Open Submission in SpeedGrader (New Window)" title="Open Submission in SpeedGrader (New Window)" target="_blank">' + '<i class="icon-gradebook" aria-hidden="true"></i>' + '</a>';
+            //var speedGraderLink = document.createElement('a');
+            
+            // Insert the speedGraderContainer div into the studentAssignment container
+            studentAssignment[i].lastElementChild.insertAdjacentElement('afterbegin', speedGraderContainer);
+        }
+    }
   }
 
   function addGradePercentage() {
