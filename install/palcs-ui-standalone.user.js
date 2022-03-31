@@ -7,7 +7,7 @@
 // @include     https://*.instructure.com/courses/*/quizzes/*/history?*
 // @include     https://*.instructure.com/*
 // @noframes
-// @version     5.2.14.01
+// @version     5.2.15.01
 // @grant       none
 // @updateURL   https://github.com/dslusser/PalcsUI-Canvancement/raw/master/install/palcs-ui-standalone.user.js
 // ==/UserScript==
@@ -41,6 +41,7 @@
     'boxResizerCSS' : true,
     'adjustExternalToolBox' : true,
     'hideGradebookTooltipCSS' : true,
+    'hideReadSpeakerButtonCSS' : true,
     'keyframesHolderCSS' : true,
     'addMsisNavigation' : false,
     'addPalcschoolNavigation' : true
@@ -61,6 +62,7 @@
   // boxResizerCSS adjusts the height of some of the small text boxes in Canvas
   // adjustExternalToolBox adjusts the height and width of the Assignment External Tool box
   // hideGradebookTooltipCSS hides the obtrusive tooltip in the Gradebook
+  // hideReadSpeakerButtonCSS hides the ReadSpeaker button in Canvas
   // addMsisNavigation adds a direct link to MSIS in the Canvas global navigation menu
   // addPalcschoolNavigation adds a direct link to Palcschool in the Canvas global navigation menu
   // I suggest using only one nav menu link until/if I find a second icon :-)
@@ -171,6 +173,7 @@
         'boxResizerCSS' : true,
         'adjustExternalToolBox' : true,
         'hideGradebookTooltipCSS' : true,
+        'hideReadSpeakerButtonCSS' : true,
         'keyframesHolderCSS' : true,
         'addMsisNavigation' : false,
         'addPalcschoolNavigation' : true
@@ -1882,7 +1885,7 @@
             speedGraderContainer.style.zIndex = '10';
             speedGraderContainer.innerHTML = '<a href="' + speedGraderLink + '" alt="Open Submission in SpeedGrader (New Window)" title="Open Submission in SpeedGrader (New Window)" target="_blank">' + '<i class="icon-gradebook" aria-hidden="true"></i>' + '</a>';
             //var speedGraderLink = document.createElement('a');
-            
+
             // Insert the speedGraderContainer div into the studentAssignment container
             studentAssignment[i].lastElementChild.insertAdjacentElement('afterbegin', speedGraderContainer);
         }
@@ -2738,6 +2741,11 @@ function addCustomCSS() {
     display: none !important;
   }`;
 
+  var hideReadSpeakerButtonCSSCode = `
+  .rspopup {
+    display: none !important;
+  }`;
+
   var keyframesHolderCSSCode = `
   @-moz-keyframes fadeIn {
     0% {
@@ -2829,6 +2837,10 @@ function addCustomCSS() {
 
     if (typeof config.hideGradebookTooltipCSS !== 'undefined' && config.hideGradebookTooltipCSS != false) {
       addPalcsuiStyle(hideGradebookTooltipCSSCode);
+    }
+
+    if (typeof config.hideReadSpeakerButtonCSS !== 'undefined' && config.hideReadSpeakerButtonCSS != false) {
+        addPalcsuiStyle(hideReadSpeakerButtonCSSCode);
     }
 
     if (typeof config.keyframesHolderCSS !== 'undefined' && config.keyframesHolderCSS != false) {
