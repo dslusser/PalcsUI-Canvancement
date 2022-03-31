@@ -6,7 +6,7 @@
 // @include         https://*.palcschool.org/moodle/palcs20/dashboard/teacher/rc_entry.php*
 // @include         https://*palcschool.org/moodle/palcs20/dashboard/teacher/rc_entry.php*
 // @noframes
-// @version         2.01.02
+// @version         2.01.02.01
 // @grant           none
 // @updateURL       https://github.com/dslusser/PalcsUI-Canvancement/raw/master/install/palcschool-rce.user.js
 // @downloadURL      https://github.com/dslusser/PalcsUI-Canvancement/raw/master/install/palcschool-rce.user.js
