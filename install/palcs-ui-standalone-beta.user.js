@@ -1,15 +1,16 @@
 // ==UserScript==
-// @name        PalcsUI : Standalone : BETA
-// @author      Dan Slusser
-// @namespace   https://github.com/dslusser/PalcsUI-Canvancement
-// @description User enhancements for the Palcs Canvas instance
-// @include     https://*.instructure.com/courses/*/gradebook/speed_grader?*
-// @include     https://*.instructure.com/courses/*/quizzes/*/history?*
-// @include     https://*.instructure.com/*
+// @name          PalcsUI : Standalone : BETA
+// @author        Dan Slusser
+// @namespace     https://github.com/dslusser/PalcsUI-Canvancement
+// @description   User enhancements for the Palcs Canvas instance
+// @include       https://*.instructure.com/courses/*/gradebook/speed_grader?*
+// @include       https://*.instructure.com/courses/*/quizzes/*/history?*
+// @include       https://*.instructure.com/*
 // @noframes
-// @version     5.2.16.00
-// @grant       none
-// @updateURL   https://github.com/dslusser/PalcsUI-Canvancement/raw/master/install/palcs-ui-standalone-beta.user.js
+// @version       5.2.16.01
+// @grant         none
+// @updateURL     https://github.com/dslusser/PalcsUI-Canvancement/raw/master/install/palcs-ui-standalone-beta.user.js
+// @downloadURL   https://github.com/dslusser/PalcsUI-Canvancement/raw/master/install/palcs-ui-standalone-beta.user.js
 // ==/UserScript==
 
 (function() {

@@ -1,12 +1,14 @@
 // ==UserScript==
-// @name        PalcschoolUI Canvancement
-// @namespace   https://github.com/dslusser/PalcsUI-Canvancement
-// @description User enhancements for the Palcschool instance
-// @include     https://*.palcschool.org/*
-// @include     https://*palcschool.org/*
+// @name            PalcschoolUI Canvancement
+// @namespace       https://github.com/dslusser/PalcsUI-Canvancement
+// @description     User enhancements for the Palcschool instance
+// @include         https://*.palcschool.org/*
+// @include         https://*palcschool.org/*
 // @noframes
-// @version     1.05
-// @grant       none
+// @version         1.05.01.01
+// @grant           none
+// @updateURL       https://github.com/dslusser/PalcsUI-Canvancement/raw/master/install/palcschool-ui.user.js
+// @downloadURL     https://github.com/dslusser/PalcsUI-Canvancement/raw/master/install/palcschool-ui.user.js
 // ==/UserScript==
 (function () {
   'use strict';

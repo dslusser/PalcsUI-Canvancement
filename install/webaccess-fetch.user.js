@@ -1,13 +1,14 @@
 // ==UserScript==
-// @name        Webaccess Fetch
-// @namespace   https://github.com/dslusser/PalcsUI-Canvancement
-// @description Fetch mail on the Webaccess page to help persist login session
-// @include     http://webaccess.*.*/gw/webacc
-// @include     https://webaccess.*.*/gw/webacc
-// @version     1.1.01
-// @grant       none
-// @author      Dan Slusser
-// @updateURL   https://github.com/dslusser/PalcsUI-Canvancement/raw/master/install/webaccess-fetch.user.js
+// @name            Webaccess Fetch
+// @namespace       https://github.com/dslusser/PalcsUI-Canvancement
+// @description     Fetch mail on the Webaccess page to help persist login session
+// @include         http://webaccess.*.*/gw/webacc
+// @include         https://webaccess.*.*/gw/webacc
+// @version         1.1.02
+// @grant           none
+// @author          Dan Slusser
+// @updateURL       https://github.com/dslusser/PalcsUI-Canvancement/raw/master/install/webaccess-fetch.user.js
+// @downloadURL     https://github.com/dslusser/PalcsUI-Canvancement/raw/master/install/webaccess-fetch.user.js
 // ==/UserScript==
 
 (function() {
