@@ -7,7 +7,7 @@
 // @include     https://*.instructure.com/courses/*/quizzes/*/history?*
 // @include     https://*.instructure.com/*
 // @noframes
-// @version     5.2.15.01
+// @version     5.2.16.00
 // @grant       none
 // @updateURL   https://github.com/dslusser/PalcsUI-Canvancement/raw/master/install/palcs-ui-standalone.user.js
 // ==/UserScript==
@@ -1695,10 +1695,18 @@
     });*/ //ORG Working Design, but trying to remove JQuery, so commenting out for now ***
 
     // NEW way of loading without jQuery
-    document.onreadystatechange = function () {
+    // UPDATE: No need for the document.onreadystatechange function here, we just need to check 
+    // the document.readyState property to see if the page is loaded. See updated version below
+    /*document.onreadystatechange = function () {
         if (document.readyState === 'complete') {
             addTheLinks();
         }
+    }*/
+
+    // UPDATE: No need for the document.onreadystatechange function here, we just need to check for 
+    // the document.readyState status of interactive, or complete.
+    if (document.readyState === 'interactive' || document.readyState === 'complete') {
+        addTheLinks();
     }
 
 
