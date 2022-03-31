@@ -5,7 +5,7 @@
 // @include         https://*.palcschool.org/*
 // @include         https://*palcschool.org/*
 // @noframes
-// @version         1.05.01.01
+// @version         1.05.01.02
 // @grant           none
 // @updateURL       https://github.com/dslusser/PalcsUI-Canvancement/raw/master/install/palcschool-ui.user.js
 // @downloadURL     https://github.com/dslusser/PalcsUI-Canvancement/raw/master/install/palcschool-ui.user.js
@@ -365,7 +365,7 @@
 
   if (typeof PalcschoolUI !== 'function') {
     const script = document.createElement('script');
-    script.src = 'https://gitcdn.xyz/repo/dslusser/PalcsUI-Canvancement/master/install/palcschool-ui.user.js';
+    script.src = 'https://github.com/dslusser/PalcsUI-Canvancement/raw/master/install/palcschool-ui.user.js';
     script.onload = function() {
       PalcschoolUI(config);
       //console.log('Missing function, loading fallback script.');
