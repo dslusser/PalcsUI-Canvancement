@@ -7,7 +7,7 @@
 // @include       https://*.instructure.com/courses/*/quizzes/*/history?*
 // @include       https://*.instructure.com/*
 // @noframes
-// @version       5.2.16.01
+// @version       5.2.17.01
 // @grant         none
 // @updateURL     https://github.com/dslusser/PalcsUI-Canvancement/raw/master/install/palcs-ui-standalone.user.js
 // @downloadURL   https://github.com/dslusser/PalcsUI-Canvancement/raw/master/install/palcs-ui-standalone.user.js
@@ -2094,11 +2094,33 @@ function addSgStudentNameGreeting() {
   //$(document).ready(function(){setupAddSgStudentNameGreetingContainers();}); //ORG Working Design with JQuery, trying to remove JQuery, so commenting out for now ***
 
   // NEW way of loading without JQuery
-  document.onreadystatechange = function () {
+  // UPDATE: No need for the document.onreadystatechange function here, we just need to check 
+  // the document.readyState property to see if the page is loaded. See updated version below
+  /*document.onreadystatechange = function () {
     if (document.readyState === 'complete') {
         setupAddSgStudentNameGreetingContainers();
     }
-  };
+  };*/
+
+  // UPDATE: No need for the document.onreadystatechange function here, we just need to check for 
+  // the document.readyState status of interactive, or complete.
+  /*if (document.readyState === 'interactive' || document.readyState === 'complete') {
+      setupAddSgStudentNameGreetingContainers();
+  }*/
+  
+  //console.log('document.readyState = ' + document.readyState);
+
+  // Check if the page is loaded, if not, add a listener to the document.readystatechange event
+  // to watch for the page to fully load.
+  if (document.readyState === 'complete') {
+    setupAddSgStudentNameGreetingContainers();
+  } else if (document.readyState !== 'complete') {
+      document.addEventListener('readystatechange', function () {
+        if (document.readyState === 'complete') {
+          setupAddSgStudentNameGreetingContainers();
+        }
+    });
+  }
 
   function setupAddSgStudentNameGreetingContainers() {
 
