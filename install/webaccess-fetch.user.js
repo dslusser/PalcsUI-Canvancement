@@ -2,9 +2,8 @@
 // @name            Webaccess Fetch
 // @namespace       https://github.com/dslusser/PalcsUI-Canvancement
 // @description     Fetch mail on the Webaccess page to help persist login session
-// @include         http://webaccess.*.*/gw/webacc
-// @include         https://webaccess.*.*/gw/webacc
-// @version         1.1.02.01
+// @include         https://webaccess.*.*/gw/webacc*
+// @version         1.1.02.02
 // @grant           none
 // @author          Dan Slusser
 // @updateURL       https://github.com/dslusser/PalcsUI-Canvancement/raw/master/install/webaccess-fetch.user.js
@@ -70,6 +69,10 @@
             document.title = pageTitleTextNum
         }
     }
+
+    // TODO: Add a check to see if top.workspace exists. 
+    // This should help prevent the script from running when 
+    // the user is not on the main Webaccess page (opens mail, composes draft, etc.).
 
 
     top.workspace.addEventListener("DOMContentLoaded", function(){
