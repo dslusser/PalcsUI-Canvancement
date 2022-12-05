@@ -3,11 +3,11 @@
 // @author        Dan Slusser
 // @namespace     https://github.com/dslusser/PalcsUI-Canvancement
 // @description   User enhancements for the Palcs Canvas instance
-// @include       https://*.instructure.com/courses/*/gradebook/speed_grader?*
-// @include       https://*.instructure.com/courses/*/quizzes/*/history?*
-// @include       https://*.instructure.com/*
+// @match         https://*.instructure.com/courses/*/gradebook/speed_grader?*
+// @match         https://*.instructure.com/courses/*/quizzes/*/history?*
+// @match         https://*.instructure.com/*
 // @noframes
-// @version       5.2.17.01
+// @version       5.2.19.01
 // @grant         none
 // @updateURL     https://github.com/dslusser/PalcsUI-Canvancement/raw/master/install/palcs-ui-standalone-beta.user.js
 // @downloadURL   https://github.com/dslusser/PalcsUI-Canvancement/raw/master/install/palcs-ui-standalone-beta.user.js
