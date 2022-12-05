@@ -2,10 +2,10 @@
 // @name            PalcschoolUI Canvancement
 // @namespace       https://github.com/dslusser/PalcsUI-Canvancement
 // @description     User enhancements for the Palcschool instance
-// @include         https://*.palcschool.org/*
-// @include         https://*palcschool.org/*
+// @match           https://*.palcschool.org/*
+// @match           https://*palcschool.org/*
 // @noframes
-// @version         1.05.01.02
+// @version         1.05.02.01
 // @grant           none
 // @updateURL       https://github.com/dslusser/PalcsUI-Canvancement/raw/master/install/palcschool-ui.user.js
 // @downloadURL     https://github.com/dslusser/PalcsUI-Canvancement/raw/master/install/palcschool-ui.user.js

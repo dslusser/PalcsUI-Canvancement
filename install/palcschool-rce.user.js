@@ -3,13 +3,13 @@
 // @author          Dan Slusser
 // @namespace       https://github.com/dslusser/PalcsUI-Canvancement
 // @description     Copy grades and automatically add comments to Report Card Entry page.
-// @include         https://*.palcschool.org/moodle/palcs20/dashboard/teacher/rc_entry.php*
-// @include         https://*palcschool.org/moodle/palcs20/dashboard/teacher/rc_entry.php*
+// @match           https://*.palcschool.org/moodle/palcs20/dashboard/teacher/rc_entry.php*
+// @match           https://*palcschool.org/moodle/palcs20/dashboard/teacher/rc_entry.php*
 // @noframes
-// @version         2.01.02.01
+// @version         2.01.03.01
 // @grant           none
 // @updateURL       https://github.com/dslusser/PalcsUI-Canvancement/raw/master/install/palcschool-rce.user.js
-// @downloadURL      https://github.com/dslusser/PalcsUI-Canvancement/raw/master/install/palcschool-rce.user.js
+// @downloadURL     https://github.com/dslusser/PalcsUI-Canvancement/raw/master/install/palcschool-rce.user.js
 // ==/UserScript==
 (function () {
     'use strict';
