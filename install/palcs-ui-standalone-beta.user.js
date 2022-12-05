@@ -7,7 +7,7 @@
 // @include       https://*.instructure.com/courses/*/quizzes/*/history?*
 // @include       https://*.instructure.com/*
 // @noframes
-// @version       5.2.17.01
+// @version       5.2.18.01
 // @grant         none
 // @updateURL     https://github.com/dslusser/PalcsUI-Canvancement/raw/master/install/palcs-ui-standalone-beta.user.js
 // @downloadURL   https://github.com/dslusser/PalcsUI-Canvancement/raw/master/install/palcs-ui-standalone-beta.user.js
