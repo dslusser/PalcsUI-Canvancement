@@ -7,7 +7,7 @@
 // @include       https://*.instructure.com/courses/*/quizzes/*/history?*
 // @include       https://*.instructure.com/*
 // @noframes
-// @version       5.2.17.01
+// @version       5.2.18.01
 // @grant         none
 // @updateURL     https://github.com/dslusser/PalcsUI-Canvancement/raw/master/install/palcs-ui-standalone.user.js
 // @downloadURL   https://github.com/dslusser/PalcsUI-Canvancement/raw/master/install/palcs-ui-standalone.user.js
@@ -43,6 +43,7 @@
     'adjustExternalToolBox' : true,
     'hideGradebookTooltipCSS' : true,
     'hideReadSpeakerButtonCSS' : true,
+    'hideEmojiPickerContainersCSS' : true,
     'keyframesHolderCSS' : true,
     'addMsisNavigation' : false,
     'addPalcschoolNavigation' : true
@@ -64,6 +65,7 @@
   // adjustExternalToolBox adjusts the height and width of the Assignment External Tool box
   // hideGradebookTooltipCSS hides the obtrusive tooltip in the Gradebook
   // hideReadSpeakerButtonCSS hides the ReadSpeaker button in Canvas
+  // hideEmojiPickerContainersCSS hides the SpeedGrader Emoji quick picker buttons
   // addMsisNavigation adds a direct link to MSIS in the Canvas global navigation menu
   // addPalcschoolNavigation adds a direct link to Palcschool in the Canvas global navigation menu
   // I suggest using only one nav menu link until/if I find a second icon :-)
@@ -175,6 +177,7 @@
         'adjustExternalToolBox' : true,
         'hideGradebookTooltipCSS' : true,
         'hideReadSpeakerButtonCSS' : true,
+        'hideEmojiPickerContainersCSS' : true,
         'keyframesHolderCSS' : true,
         'addMsisNavigation' : false,
         'addPalcschoolNavigation' : true
@@ -2777,6 +2780,15 @@ function addCustomCSS() {
     display: none !important;
   }`;
 
+  var hideEmojiPickerContainersCSSCode = `
+  .emoji-picker-container {
+    display: none !important;
+  }
+  
+  #emoji-quick-picker-container {
+    display: none !important;
+  }`;
+
   var keyframesHolderCSSCode = `
   @-moz-keyframes fadeIn {
     0% {
@@ -2872,6 +2884,10 @@ function addCustomCSS() {
 
     if (typeof config.hideReadSpeakerButtonCSS !== 'undefined' && config.hideReadSpeakerButtonCSS != false) {
         addPalcsuiStyle(hideReadSpeakerButtonCSSCode);
+    }
+
+    if (typeof config.hideEmojiPickerContainersCSS !== 'undefined' && config.hideEmojiPickerContainersCSS != false) {
+      addPalcsuiStyle(hideEmojiPickerContainersCSSCode);
     }
 
     if (typeof config.keyframesHolderCSS !== 'undefined' && config.keyframesHolderCSS != false) {
