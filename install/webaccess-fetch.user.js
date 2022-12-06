@@ -2,8 +2,8 @@
 // @name            Webaccess Fetch
 // @namespace       https://github.com/dslusser/PalcsUI-Canvancement
 // @description     Fetch mail on the Webaccess page to help persist login session
-// @match           https://webaccess.*.*/gw/webacc*
-// @version         1.1.03.01
+// @match           https://*/gw/webacc*
+// @version         1.1.03.02
 // @grant           none
 // @author          Dan Slusser
 // @updateURL       https://github.com/dslusser/PalcsUI-Canvancement/raw/master/install/webaccess-fetch.user.js
