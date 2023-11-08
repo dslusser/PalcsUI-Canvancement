@@ -6,7 +6,7 @@
 // @match           https://*.palcschool.org/moodle/palcs20/dashboard/teacher/rc_entry.php*
 // @match           https://*palcschool.org/moodle/palcs20/dashboard/teacher/rc_entry.php*
 // @noframes
-// @version         2.01.03.01
+// @version         2.01.04.01
 // @grant           none
 // @updateURL       https://github.com/dslusser/PalcsUI-Canvancement/raw/master/install/palcschool-rce.user.js
 // @downloadURL     https://github.com/dslusser/PalcsUI-Canvancement/raw/master/install/palcschool-rce.user.js
@@ -18,7 +18,10 @@
         'use strict';
 
         
-        // Comments list valid as of 2/23/2021. No comments listed for 13, 14, and 29.
+        // Comments list valid as of 11/8/2023. 
+        // No comments listed for 13, 14, and 29. And now 35 as well (updated 11/8/2023)
+        // Comment 35 related to COVID-19 has been removed (updated 11/8/2023)
+        // Comment 36 relating to floor grade has been added (updated 11/8/2023)
         // Only modify this list if something changes on palcschool.
         var comment1 = 1; // 1. Submits quality work
         var comment2 = 3; // 2. Shows initiative and motivation
@@ -51,7 +54,7 @@
         var comment32 = 18; // 32. Student lesson help attendance is recommended
         var comment33 = 52; // 33. Recommend attending live virtual lessons
         var comment34 = 20; // 34. No grade given because of student's enrollment date
-        var comment35 = 53; // 35. MP4 Grade Not Applicable due to COVID-19
+        var comment36 = 54; // 36. Floor grade of 50% assigned
 
 
         // The values below hold the list of comments to be added for grades A, B, C, D, and F. 
