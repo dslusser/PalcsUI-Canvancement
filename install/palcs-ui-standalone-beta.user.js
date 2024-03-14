@@ -7,7 +7,7 @@
 // @match         https://*.instructure.com/courses/*/quizzes/*/history?*
 // @match         https://*.instructure.com/*
 // @noframes
-// @version       5.2.19.01
+// @version       5.2.20.00
 // @grant         none
 // @updateURL     https://github.com/dslusser/PalcsUI-Canvancement/raw/master/install/palcs-ui-standalone-beta.user.js
 // @downloadURL   https://github.com/dslusser/PalcsUI-Canvancement/raw/master/install/palcs-ui-standalone-beta.user.js
@@ -41,6 +41,7 @@
     'addCustomCSS' : true,
     'boxResizerCSS' : true,
     'adjustExternalToolBox' : true,
+    'stopCanvasFromRenamingLTI' : true,
     'hideGradebookTooltipCSS' : true,
     'hideReadSpeakerButtonCSS' : true,
     'hideEmojiPickerContainersCSS' : true,
@@ -63,6 +64,7 @@
   // addGlobalPalcschoolProfileLinks adds Palcschool Profile links to the Global People (aka. Users) Page
   // boxResizerCSS adjusts the height of some of the small text boxes in Canvas
   // adjustExternalToolBox adjusts the height and width of the Assignment External Tool box
+  // stopCanvasFromRenamingLTI stops Canvas from renaming the lesson title when an LTI is assigned
   // hideGradebookTooltipCSS hides the obtrusive tooltip in the Gradebook
   // hideReadSpeakerButtonCSS hides the ReadSpeaker button in Canvas
   // hideEmojiPickerContainersCSS hides the SpeedGrader Emoji quick picker buttons
@@ -175,6 +177,7 @@
         'addCustomCSS' : true,
         'boxResizerCSS' : true,
         'adjustExternalToolBox' : true,
+        'stopCanvasFromRenamingLTI' : true,
         'hideGradebookTooltipCSS' : true,
         'hideReadSpeakerButtonCSS' : true,
         'hideEmojiPickerContainersCSS' : true,
@@ -206,6 +209,7 @@
         //console.log(isCanvas + ', yes this is canvas');
         addCustomCSS();
         adjustExternalToolBox();
+        stopCanvasFromRenamingLTI();
     }
 
     if (/palcs\.instructure\.com$/.test(window.location.host)) {
@@ -1699,7 +1703,7 @@
     });*/ //ORG Working Design, but trying to remove JQuery, so commenting out for now ***
 
     // NEW way of loading without jQuery
-    // UPDATE: No need for the document.onreadystatechange function here, we just need to check 
+    // UPDATE: No need for the document.onreadystatechange function here, we just need to check
     // the document.readyState property to see if the page is loaded. See updated version below
     /*document.onreadystatechange = function () {
         if (document.readyState === 'complete') {
@@ -1707,7 +1711,7 @@
         }
     }*/
 
-    // UPDATE: No need for the document.onreadystatechange function here, we just need to check for 
+    // UPDATE: No need for the document.onreadystatechange function here, we just need to check for
     // the document.readyState status of interactive, or complete.
     if (document.readyState === 'interactive' || document.readyState === 'complete') {
         addTheLinks();
@@ -2097,7 +2101,7 @@ function addSgStudentNameGreeting() {
   //$(document).ready(function(){setupAddSgStudentNameGreetingContainers();}); //ORG Working Design with JQuery, trying to remove JQuery, so commenting out for now ***
 
   // NEW way of loading without JQuery
-  // UPDATE: No need for the document.onreadystatechange function here, we just need to check 
+  // UPDATE: No need for the document.onreadystatechange function here, we just need to check
   // the document.readyState property to see if the page is loaded. See updated version below
   /*document.onreadystatechange = function () {
     if (document.readyState === 'complete') {
@@ -2105,12 +2109,12 @@ function addSgStudentNameGreeting() {
     }
   };*/
 
-  // UPDATE: No need for the document.onreadystatechange function here, we just need to check for 
+  // UPDATE: No need for the document.onreadystatechange function here, we just need to check for
   // the document.readyState status of interactive, or complete.
   /*if (document.readyState === 'interactive' || document.readyState === 'complete') {
       setupAddSgStudentNameGreetingContainers();
   }*/
-  
+
   //console.log('document.readyState = ' + document.readyState);
 
   // Check if the page is loaded, if not, add a listener to the document.readystatechange event
@@ -2543,6 +2547,146 @@ function adjustExternalToolBox() {
     }
 }
 
+function stopCanvasFromRenamingLTI() {
+  if (typeof config.stopCanvasFromRenamingLTI !== 'undefined' && !config.stopCanvasFromRenamingLTI) {
+      return;
+  }
+  console.log('stopCanvasFromRenamingLTI() is running');
+
+  //Globals for stopCanvasFromRenamingLTI functions
+  var getURLArray = document.URL.split(/\?(.+)?/)[0];
+  var parseURL = getURLArray.split('/');
+  var assignments = parseURL[5];
+  var edit = parseURL[7];
+
+
+  // NEW NEW design without JQuery...The DOM is super goofy. No setTimeout needed. This is the way.
+  function mycallback() {
+      setupStopCanvasFromRenamingLTIContainers();
+  }
+  //...
+  (function() {
+  if (window.addEventListener) {
+      addEventListener("load", mycallback); //standard
+  } else if (window.attachEvent) {
+      attachEvent("onload", mycallback); //IE
+  } else { //fallback method
+      var oldCb = onload;
+      onload = function() {
+      if (oldCb) oldCb();
+      mycallback();
+      };
+  }
+  })();
+
+  function setupStopCanvasFromRenamingLTIContainers() {
+
+      if (assignments == 'assignments' && edit == 'edit') {
+
+          if (document.getElementById("assignment_external_tool_tag_attributes_url_find")){
+
+              //External tool button id=assignment_external_tool_tag_attributes_url_find
+              var ExternalToolButton = document.getElementById("assignment_external_tool_tag_attributes_url_find")
+              ExternalToolButton.addEventListener('click', visibilityObserverLauncher);
+
+              function visibilityObserverLauncher() {
+                  console.log("visibilityObserverLauncher initialized")
+                  //const preInnerLTI = document.getElementById("select_context_content_dialog")
+                  //console.log(window.getComputedStyle(preInnerLTI))
+                  //console.log("0 The calculated current style.display is " + window.getComputedStyle(preInnerLTI).display)
+                  visibilityObserver();
+                  //ExternalToolButton.removeEventListener('click', visibilityObserverLauncher);
+              }
+
+
+              function visibilityObserver() {
+
+                  const innerLTI = document.getElementById("select_context_content_dialog");
+
+                  const lessonTitle = document.querySelector('#assignment_name');
+                  console.log("lessonTitle = " + lessonTitle)
+                  var originalLessonTitle = lessonTitle.value;
+                  console.log("originalLessonTitle = " + originalLessonTitle)
+
+                  /*setTimeout(function() {
+                  var selectButtonForLTIWindow = document.querySelectorAll('.add_item_button.btn.btn-primary.ui-button.ui-widget.ui-state-default.ui-corner-all.ui-button-text-only')[0];
+                  selectButtonForLTIWindow.addEventListener('click', checkForLTITitleChanges);
+                  }, 2000);*/
+
+                  function checkForLTITitleChanges() {
+                    console.log("Checking for title changes")
+                    var newLessonTitle = document.querySelector('#assignment_name').value;
+                    if (originalLessonTitle !== newLessonTitle){
+                      console.log("Canvas changed the lesson title to = " + newLessonTitle)
+                      console.log("Changing lesson title back to original = " + originalLessonTitle)
+                      newLessonTitle = originalLessonTitle;
+                      console.log("newLessonTitle is now = " + newLessonTitle)
+                      document.querySelector('#assignment_name').value = originalLessonTitle;
+                      console.log("document.querySelector('#assignment_name').value = " + newLessonTitle)
+                    }
+                  }
+                  //let display = innerLTI.style.display
+                  //let currentStyle = innerLTI.style.display;
+                  //var currentStyle = innerLTI.style.display;
+                  //console.log("Initial current style.display is " + currentStyle)
+                  //innerLTI.style.display is unreliable bc it only checks inline styles.
+                  //we need to use window.getComputedStyle(innerLTI).display for best accuracy
+
+                  //var calculatedCurrentStyle = window.getComputedStyle(innerLTI).display;
+                  //console.log("1 The calculated current style.display is " + window.getComputedStyle(innerLTI).display)
+
+                  // Callback function when changes occurs
+                  function callback(mutationRecord, observer) {
+                      console.log("We're in the mutation observer now")
+                      //console.log("Current style.display is now: " + currentStyle)
+                      //console.log("2 The calculated current style.display is " + window.getComputedStyle(innerLTI).display)
+
+                      //var newTop = innerLTI.parentElement.offsetTop - 100; //50
+                      //parseInt(newTop)
+                      //console.log(newTop)
+
+                      //var LTIContainer = document.querySelectorAll(".ui-dialog.ui-widget.ui-widget-content.ui-corner-all.ui-draggable.ui-resizable.ui-dialog-buttons")[0];
+                      //LTIContainer.style.width = '80%';
+                      //LTIContainer.style.left = '10%';
+                      //LTIContainer.style.top = newTop + 'px';
+                      //innerLTI.style.height = '370px';
+
+                      var selectButtonForLTIWindow = document.querySelectorAll('.add_item_button.btn.btn-primary.ui-button.ui-widget.ui-state-default.ui-corner-all.ui-button-text-only')[0];
+                  selectButtonForLTIWindow.addEventListener('click', checkForLTITitleChanges);
+
+
+
+
+
+
+                      console.log("observe is... " + observer)
+                      observer.disconnect();
+                      console.log("after disconnect, observer is now " + observer)
+                      //console.log("3 The calculated current style.display is " + window.getComputedStyle(innerLTI).display)
+                  }
+
+                  // Create a new instance of MutationObserver with callback in params
+                  const observer = new MutationObserver(callback);
+
+                  // Setup config
+                  const config = {
+                    attributeFilter: ["style"]
+                  };
+
+                  // When everything is ready, we just observe our target (innerLTI)
+                  observer.observe(innerLTI, config);
+
+                  //console.log("After the observer, style.display is " + currentStyle)
+                  //console.log("4 The calculated current style.display is " + window.getComputedStyle(innerLTI).display)
+
+              }
+          }
+
+
+      }
+  }
+}
+
   function addAwardFullPointsAndNext() {
     if (isSG && typeof config.awardFullPointsAndNext !== 'undefined' && config.awardFullPointsAndNext) {
       var gradingBox = document.querySelector('input#grading-box-extended');
@@ -2784,7 +2928,7 @@ function addCustomCSS() {
   .emoji-picker-container {
     display: none !important;
   }
-  
+
   #emoji-quick-picker-container {
     display: none !important;
   }`;
