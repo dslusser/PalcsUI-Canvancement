@@ -12,6 +12,6 @@ This installation script may at any time stop working due to changes and updates
 Additionally, there are some beta scripts that are used to introduce new features before being fully released. You'll also notice some deprecated and/or abandoned scripts that will eventually be removed. 
 
 ## Notes About Code Quality
-Over the years, this code has slowly become unruly. At this point, the code has turned into what amounts as a hot mess. This essentially occurred because I had no time to write proper code, so I just threw together stuff that barely worked and got it out the door. I would love to completely rewrite this entire code to reduce bloat and make it follow proper coding conventions, but I never seem to have the time. After all, this is just a hacked together script to make Canvas do some things more efficiently. 
+Over the years, this code has slowly become unruly and it has turned into a hot mess. This essentially occurred because I had no time to write proper code, so I just threw together stuff that worked "good enough" and got it out the door. I would love to completely rewrite this entire code to reduce bloat and make it follow proper coding conventions, but I never seem to have the time. After all, this is just a hacked together script to make Canvas do some things more efficiently. 
 
 Cheers and happy Canvas-ing!
