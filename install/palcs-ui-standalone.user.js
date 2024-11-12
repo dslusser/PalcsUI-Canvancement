@@ -7,7 +7,7 @@
 // @match         https://*.instructure.com/courses/*/quizzes/*/history?*
 // @match         https://*.instructure.com/*
 // @noframes
-// @version       5.2.19.01
+// @version       5.3.00.00
 // @grant         none
 // @updateURL     https://github.com/dslusser/PalcsUI-Canvancement/raw/master/install/palcs-ui-standalone.user.js
 // @downloadURL   https://github.com/dslusser/PalcsUI-Canvancement/raw/master/install/palcs-ui-standalone.user.js
@@ -40,7 +40,9 @@
     'addGlobalPalcschoolProfileLinks' : true,
     'addCustomCSS' : true,
     'boxResizerCSS' : true,
+    'addSpeedGraderStyling' : true,
     'adjustExternalToolBox' : true,
+    'stopCanvasFromRenamingLTI' : true,
     'hideGradebookTooltipCSS' : true,
     'hideReadSpeakerButtonCSS' : true,
     'hideEmojiPickerContainersCSS' : true,
@@ -62,7 +64,9 @@
   // addPalcschoolProfileLinks adds Palcschool Profile links to the People (aka. Users) Page
   // addGlobalPalcschoolProfileLinks adds Palcschool Profile links to the Global People (aka. Users) Page
   // boxResizerCSS adjusts the height of some of the small text boxes in Canvas
+  // addSpeedGraderStyling adds some custom styling to the TinyMCE editor in the SpeedGrader
   // adjustExternalToolBox adjusts the height and width of the Assignment External Tool box
+  // stopCanvasFromRenamingLTI stops Canvas from renaming the lesson title when an LTI is assigned
   // hideGradebookTooltipCSS hides the obtrusive tooltip in the Gradebook
   // hideReadSpeakerButtonCSS hides the ReadSpeaker button in Canvas
   // hideEmojiPickerContainersCSS hides the SpeedGrader Emoji quick picker buttons
@@ -174,7 +178,9 @@
         'addGlobalPalcschoolProfileLinks' : true,
         'addCustomCSS' : true,
         'boxResizerCSS' : true,
+        'addSpeedGraderStyling' : true,
         'adjustExternalToolBox' : true,
+        'stopCanvasFromRenamingLTI' : true,
         'hideGradebookTooltipCSS' : true,
         'hideReadSpeakerButtonCSS' : true,
         'hideEmojiPickerContainersCSS' : true,
@@ -206,6 +212,7 @@
         //console.log(isCanvas + ', yes this is canvas');
         addCustomCSS();
         adjustExternalToolBox();
+        stopCanvasFromRenamingLTI();
     }
 
     if (/palcs\.instructure\.com$/.test(window.location.host)) {
@@ -239,6 +246,7 @@
         addGradePercentage();
         addSgStudentNameGreeting();
         addAwardFullPointsAndNext();
+        addSpeedGraderStyling();
     }
 
     // This try/catch gave issues on previous versions, if issues persist, comment out
@@ -360,9 +368,9 @@
           var parent = btn.parentNode;
           if (parent) {
             var advance = advanceButton(commentAdvance, {
-              'title' : 'Submit comment and advance to next user'
+              'title' : 'Save grades, submit comments, and advance to next user'
             });
-            btn.title = 'Submit comment and stay on this user';
+            btn.title = 'Submit comments only, stay on this user';
             parent.insertBefore(advance, btn.nextSibling);
           }
         }
@@ -370,21 +378,129 @@
     }
 
     function commentAdvance() {
-      var comment = document.getElementById('speed_grader_comment_textarea') || document.getElementById('speedgrader_comment_textarea');
-      if (!comment || comment.value.trim().length === 0) {
-        advanceUser = true;
-        advanceSrc = false;
-        nextUser();
-        return;
-      }
-      var btn = document.getElementById('comment_submit_button');
-      if (btn) {
-        advanceUser = true;
-        advanceSrc = 'comment';
-        btn.dispatchEvent(new Event('click', {
-          'bubbles' : true
-        }));
-      }
+      // Canvas updated the comment box to use TinyMCE Rich Content Editor, this breaks the current commentAdvance function
+      // Specifically the var comment is no longer available
+      // We need to make a new variable to reach into the TinyMCE iframe to get the comment value...DWS
+      // Use replaceSgStudentNameShortCode() as a template for how to access the iframe content and 
+      // how to create an if statement to keep this current code, but add the new code for the TinyMCE editor
+      // Don't forget to also look at awardFullPointsAndNext() for how to add replaceSgStudentNameShortCode()
+      // with a promise if we end up adding replaceSgLessonNameShortCode() or replaceSgStudentNameShortCode() here - DWS
+
+      // Get the functions from addSgStudentNameGreeting
+      const { launchShortCodeReplacementFunctions, replaceSgStudentNameShortCode, replaceSgLessonNameShortCode } = addSgStudentNameGreeting();
+
+      function dispatchGradingBoxChange(gradingBox) {
+        return new Promise((resolve) => {
+            advanceUser = false;
+            advanceSrc = 'grade';
+            gradingBox.dispatchEvent(new Event('change', { 'bubbles': true }));
+    
+            // Resolve the promise after a short delay to allow event processing
+            setTimeout(() => {
+                resolve();
+            }, 100); // Adjust the delay as needed
+        });
+      };
+
+      function dispatchCommentSubmit(btn) {
+        return new Promise((resolve) => {
+            advanceUser = true;
+            advanceSrc = 'comment';
+            btn.dispatchEvent(new Event('click', { 'bubbles': true }));
+    
+            // Resolve the promise after a short delay to allow event processing
+            setTimeout(() => {
+                rubricAdvance(); // New addition; allows for saving of the rubric scores when the comment is submitted - DWS
+                resolve();
+            }, 100); // Adjust the delay as needed
+        });
+      };
+
+
+        var commentBoxTextArea = document.getElementById('speed_grader_comment_textarea');
+        var comment_rce_textarea_ifr = document.getElementById("comment_rce_textarea_ifr");
+
+        if (commentBoxTextArea){
+
+          var comment = commentBoxTextArea || document.getElementById('speedgrader_comment_textarea');
+          if (!comment || comment.value.trim().length === 0) {
+            advanceUser = true;
+            advanceSrc = false;
+            nextUser();
+            return;
+          }
+          var btn = document.getElementById('comment_submit_button');
+          if (btn) {
+            advanceUser = true;
+            advanceSrc = 'comment';
+            btn.dispatchEvent(new Event('click', {
+              'bubbles' : true
+            }));
+          }
+
+
+        } else if (comment_rce_textarea_ifr) {
+
+          var iframeDocContent = comment_rce_textarea_ifr.contentDocument || comment_rce_textarea_ifr.contentWindow.document;
+          var tinymceElement = iframeDocContent.getElementById("tinymce");
+          var tinymceValue = tinymceElement ? tinymceElement.innerHTML : null;
+
+          // Should we add the replaceSgStudentNameShortCode() and replaceSgLessonNameShortCode() here?
+          // Use replaceSgStudentNameShortCode here
+          //replaceSgStudentNameShortCode();
+
+          // Use replaceSgLessonNameShortCode here
+          //replaceSgLessonNameShortCode();
+
+          // NOTE: Because of TinyMCE, the tinymceValue length is never 0. Canvas TinyMCE adds a <p><br data-mce-bogus="1"></p> 
+          // when the comment box is empty, or when there is an empty line in the comment box.
+          // The least amount of text that will be added to the comment box is 30 characters: <p><br data-mce-bogus="1"></p>
+          // OR the least amount of text that will be added to the comment box is 8 characters: <p>a</p>
+          if (!tinymceValue || tinymceValue.trim().length === 0) {
+            advanceUser = true;
+            advanceSrc = false;
+            nextUser();
+            return;
+          }
+          var btn = document.getElementById('comment_submit_button');
+          var gradingBox = document.querySelector('input#grading-box-extended');
+          if (btn && gradingBox) {
+            dispatchGradingBoxChange(gradingBox)
+                .then(() => {
+                    return launchShortCodeReplacementFunctions();
+                })
+                .then(() => {
+                    return dispatchCommentSubmit(btn);
+                })
+                .catch((error) => {
+                    console.error("Error processing events:", error);
+                });
+          }
+
+          //var studentGrade = parseFloat(document.getElementById('grading-box-extended').value, 10);
+          var gradingBox = document.querySelector('input#grading-box-extended');
+          var assignmentValue = parseFloat(document.getElementById('grade_container').innerText.split(/(\d+)/g)[1], 10);
+
+          var studentGradeBox = document.getElementById('grading-box-extended');
+          //console.log('Original value = ' + studentGradeBox.value);
+          studentGradeBox.value = assignmentValue;
+          studentGradeBox.setAttribute('value', studentGradeBox.value);
+          //console.log('New value = ' + studentGradeBox.value);
+
+          if (isNaN(assignmentValue)) {
+            console.log('Assignment Value is not a number');
+          }
+
+          /*advanceUser = true;
+          advanceSrc = 'grade';
+          gradingBox.dispatchEvent(new Event('change', {
+            'bubbles' : true
+          }));*/
+
+
+        }
+
+
     }
 
     // Rubrics
@@ -426,10 +542,10 @@
         if (btn) {
           var parent = btn.parentNode;
           if (parent) {
-            var advance = advanceButton(rubricAdvance, {
-              'title' : 'Save rubric and advance to next user'
+            var advance = advanceButton(rubricAdvanceWithComments, {
+              'title' : 'Save rubric and comments, advance to next user'
             });
-            btn.title = 'Save rubric and stay on this user';
+            btn.title = 'Save rubric only, stay on this user';
             advance.style.marginLeft = '3px';
             parent.insertBefore(advance, btn.nextSibling);
           }
@@ -446,6 +562,30 @@
           'bubbles' : true
         }));
       }
+    }
+
+    function rubricSaveAndAdvance() {
+      return new Promise((resolve, reject) => {
+          try {
+              var btn = document.querySelector('div#rubric_holder button.save_rubric_button');
+              if (btn) {
+                  advanceUser = true;
+                  advanceSrc = 'rubric';
+                  btn.dispatchEvent(new Event('click', { 'bubbles': true }));
+  
+                  // Resolve the promise after a short delay to allow event processing
+                  setTimeout(() => {
+                      resolve();
+                  }, 100); // Adjust the delay as needed
+              } else {
+                  // If the button is not found, reject the promise
+                  reject(new Error("Rubric save button not found"));
+              }
+          } catch (error) {
+              // Catch any unexpected errors and reject the promise
+              reject(error);
+          }
+      });
     }
 
     function advanceButton(f, options) {
@@ -467,6 +607,106 @@
       advance.appendChild(icon);
       advance.addEventListener('click', f);
       return advance;
+    }
+
+    function rubricAdvanceWithComments() {
+      // Canvas updated the comment box to use TinyMCE Rich Content Editor, this breaks the current commentAdvance function
+      // Specifically the var comment is no longer available
+      // We need to make a new variable to reach into the TinyMCE iframe to get the comment value...DWS
+      // Use replaceSgStudentNameShortCode() as a template for how to access the iframe content and 
+      // how to create an if statement to keep this current code, but add the new code for the TinyMCE editor
+      // Don't forget to also look at awardFullPointsAndNext() for how to add replaceSgStudentNameShortCode()
+      // with a promise if we end up adding replaceSgLessonNameShortCode() or replaceSgStudentNameShortCode() here - DWS
+
+      // Get the functions from addSgStudentNameGreeting
+      const { launchShortCodeReplacementFunctions, replaceSgStudentNameShortCode, replaceSgLessonNameShortCode } = addSgStudentNameGreeting();
+
+      function dispatchCommentSubmit(btn) {
+        return new Promise((resolve) => {
+            advanceUser = false;
+            advanceSrc = 'comment';
+            btn.dispatchEvent(new Event('click', { 'bubbles': true }));
+    
+            // Resolve the promise after a short delay to allow event processing
+            setTimeout(() => {
+                //rubricAdvance(); // New addition; allows for saving of the rubric scores when the comment is submitted - DWS
+                //advanceUser = false;
+                //advanceSrc = 'comment';
+                resolve();
+            }, 100); // Adjust the delay as needed
+        });
+      };
+
+
+        var commentBoxTextArea = document.getElementById('speed_grader_comment_textarea');
+        var comment_rce_textarea_ifr = document.getElementById("comment_rce_textarea_ifr");
+
+        if (commentBoxTextArea){
+
+          var comment = commentBoxTextArea || document.getElementById('speedgrader_comment_textarea');
+          if (!comment || comment.value.trim().length === 0) {
+            advanceUser = true;
+            advanceSrc = false;
+            nextUser();
+            return;
+          }
+          var btn = document.getElementById('comment_submit_button');
+          if (btn) {
+            advanceUser = true;
+            advanceSrc = 'comment';
+            btn.dispatchEvent(new Event('click', {
+              'bubbles' : true
+            }));
+          }
+
+
+        } else if (comment_rce_textarea_ifr) {
+
+          var iframeDocContent = comment_rce_textarea_ifr.contentDocument || comment_rce_textarea_ifr.contentWindow.document;
+          var tinymceElement = iframeDocContent.getElementById("tinymce");
+          var tinymceValue = tinymceElement ? tinymceElement.innerHTML : null;
+
+          // Should we add the replaceSgStudentNameShortCode() and replaceSgLessonNameShortCode() here?
+          // Use replaceSgStudentNameShortCode here
+          //replaceSgStudentNameShortCode();
+
+          // Use replaceSgLessonNameShortCode here
+          //replaceSgLessonNameShortCode();
+
+          // NOTE: Because of TinyMCE, the tinymceValue length is never 0. Canvas TinyMCE adds a <p><br data-mce-bogus="1"></p> 
+          // when the comment box is empty, or when there is an empty line in the comment box.
+          // The least amount of text that will be added to the comment box is 30 characters: <p><br data-mce-bogus="1"></p>
+          // OR the least amount of text that will be added to the comment box is 8 characters: <p>a</p>
+          if (!tinymceValue || tinymceValue.trim().length === 0) {
+            advanceUser = true;
+            advanceSrc = false;
+            nextUser();
+            return;
+          }
+          var btn = document.getElementById('comment_submit_button');
+          if (btn) {
+            launchShortCodeReplacementFunctions()
+                .then(() => {
+                  return new Promise(resolve => setTimeout(resolve, 100)); // Ensure 1200ms delay
+                })
+                .then(() => {
+                  return dispatchCommentSubmit(btn);
+                })
+                .then(() => {
+                  return new Promise(resolve => setTimeout(resolve, 100)); // Ensure 5000ms delay
+                })
+                .then(() => {
+                  return rubricSaveAndAdvance();
+                })
+                .catch((error) => {
+                    console.error("Error processing events:", error);
+                });
+          }
+
+
+        }
+
+
     }
 
     function nextUser() {
@@ -1699,7 +1939,7 @@
     });*/ //ORG Working Design, but trying to remove JQuery, so commenting out for now ***
 
     // NEW way of loading without jQuery
-    // UPDATE: No need for the document.onreadystatechange function here, we just need to check 
+    // UPDATE: No need for the document.onreadystatechange function here, we just need to check
     // the document.readyState property to see if the page is loaded. See updated version below
     /*document.onreadystatechange = function () {
         if (document.readyState === 'complete') {
@@ -1707,7 +1947,7 @@
         }
     }*/
 
-    // UPDATE: No need for the document.onreadystatechange function here, we just need to check for 
+    // UPDATE: No need for the document.onreadystatechange function here, we just need to check for
     // the document.readyState status of interactive, or complete.
     if (document.readyState === 'interactive' || document.readyState === 'complete') {
         addTheLinks();
@@ -1904,6 +2144,49 @@
     }
   }
 
+  function addSpeedGraderStyling() {
+    if (typeof config.addSpeedGraderStyling !== 'undefined' && !config.addSpeedGraderStyling) {
+      return;
+    }
+
+    const styleContent = `
+    .tox.tox-tinymce.tox-tinymce--toolbar-sticky-off {
+        height: inherit !important;
+        min-height: 300px !important;
+    }
+
+    .tox.tox-tinymce.tox-tinymce--toolbar-sticky-on {
+        height: inherit !important;
+        min-height: 300px !important;
+    }
+
+    .tox.tox-tinymce.tox-tinymce--toolbar-sticky-off.tox-fullscreen {
+        height: inherit !important;
+        min-height: 300px !important;
+    }
+
+    .RceHtmlEditor {
+        min-height: 300px !important;
+    }
+
+    .CodeMirror.cm-s-default.CodeMirror-wrap {
+        min-height: 300px !important;
+    }
+    `;
+
+    let styleElement = document.getElementById('palcsUIcss');
+
+    if (!styleElement) {
+        // Create a new style element if it doesn't exist
+        styleElement = document.createElement('style');
+        styleElement.id = 'palcsUIcssSpeedGrader';
+        document.head.appendChild(styleElement);
+    }
+
+    // Append the new styles to the existing style element
+    styleElement.appendChild(document.createTextNode(styleContent));
+  }
+
   function addGradePercentage() {
     if (typeof config.addGradePercentage !== 'undefined' && !config.addGradePercentage) {
       return;
@@ -2094,331 +2377,803 @@ function addSgStudentNameGreeting() {
   var pointPercentNumberFired = false; //NEW for Debugging
   var hasRubric = document.getElementById('rubric_full');
 
-  //$(document).ready(function(){setupAddSgStudentNameGreetingContainers();}); //ORG Working Design with JQuery, trying to remove JQuery, so commenting out for now ***
+  function setup(){
+    //$(document).ready(function(){setupAddSgStudentNameGreetingContainers();}); //ORG Working Design with JQuery, trying to remove JQuery, so commenting out for now ***
 
-  // NEW way of loading without JQuery
-  // UPDATE: No need for the document.onreadystatechange function here, we just need to check 
-  // the document.readyState property to see if the page is loaded. See updated version below
-  /*document.onreadystatechange = function () {
-    if (document.readyState === 'complete') {
-        setupAddSgStudentNameGreetingContainers();
-    }
-  };*/
-
-  // UPDATE: No need for the document.onreadystatechange function here, we just need to check for 
-  // the document.readyState status of interactive, or complete.
-  /*if (document.readyState === 'interactive' || document.readyState === 'complete') {
-      setupAddSgStudentNameGreetingContainers();
-  }*/
-  
-  //console.log('document.readyState = ' + document.readyState);
-
-  // Check if the page is loaded, if not, add a listener to the document.readystatechange event
-  // to watch for the page to fully load.
-  if (document.readyState === 'complete') {
-    setupAddSgStudentNameGreetingContainers();
-  } else if (document.readyState !== 'complete') {
-      document.addEventListener('readystatechange', function () {
-        if (document.readyState === 'complete') {
+    // NEW way of loading without JQuery
+    // UPDATE: No need for the document.onreadystatechange function here, we just need to check
+    // the document.readyState property to see if the page is loaded. See updated version below
+    /*document.onreadystatechange = function () {
+      if (document.readyState === 'complete') {
           setupAddSgStudentNameGreetingContainers();
-        }
-    });
-  }
+      }
+    };*/
 
-  function setupAddSgStudentNameGreetingContainers() {
+    // UPDATE: No need for the document.onreadystatechange function here, we just need to check for
+    // the document.readyState status of interactive, or complete.
+    /*if (document.readyState === 'interactive' || document.readyState === 'complete') {
+        setupAddSgStudentNameGreetingContainers();
+    }*/
+
+    //console.log('document.readyState = ' + document.readyState);
+
+    // Check if the page is loaded, if not, add a listener to the document.readystatechange event
+    // to watch for the page to fully load.
+    if (document.readyState === 'complete') {
+      setupAddSgStudentNameGreetingContainers();
+    } else if (document.readyState !== 'complete') {
+        document.addEventListener('readystatechange', function () {
+          if (document.readyState === 'complete') {
+            setupAddSgStudentNameGreetingContainers();
+          }
+      });
+    }
+
+    function setupAddSgStudentNameGreetingContainers() {
+
+        if (speed_grader == 'speed_grader') {
+
+          // ORG var when it was located in the form (moved it out of the form)
+          //var AddSgStudentNameGreetingLink = `<span class="fOyUs_bGBk dJCgj_bGBk" id="SgGreetingContainer"><div class="fOyUs_bGBk fOyUs_desw" style="padding: 0px 0px 0px 0.5rem;"><a href="JavaScript:void(0);" id="SgGreeting" style="" title="Add Student Name Greeting" alt="Add Student Name Greeting"><span>😬</span></a></div></span>`;
+
+          // Had to adjust the location of the variable
+          // The form it was originally enclosed in stopped working.
+          //var SgTextArea = document.getElementById('speed_grader_comment_textarea_mount_point');
+          //SgTextArea.firstElementChild.innerHTML += AddSgStudentNameGreetingLink;
+
+          var AddSgStudentNameGreetingLink = `<span id="SgGreetingContainer" style="padding: 0px 0px 0px 0.1rem;"><a href="JavaScript:void(0);" id="SgGreeting" style="text-decoration: none;" title="In the Assignments Comments text box, add a greeting and the first name of the current student" alt="In the Assignments Comments text box, add a greeting and the first name of the current student"><span>😬</span></a></span>`;
+
+          var AddSgStudentNameSalutationLink = `<span id="SgSalutationContainer" style="padding: 0px 0px 0px 0.1rem;"><a href="JavaScript:void(0);" id="SgSalutation" style="text-decoration: none;" title="In the Assignments Comments text box, add the first name of the current student and a salutation" alt="In the Assignments Comments text box, add the first name of the current student and a salutation"><span>😃</span></a></span>`;
+
+          var AddSgStudentNameShortCodeLink = `<span id="SgStudentNameShortCodeContainer" style="padding: 0px 0px 0px 0.1rem;"><a href="JavaScript:void(0);" id="SgStudentNameShortCode" style="text-decoration: none;" title="In the Assignments Comments text box, replace the [[StudentName]] Short Code with the first name of the current student" alt="In the Assignments Comments text box, replace the [[StudentName]] Short Code with the first name of the current student"><span>🤓</span></a></span>`;
+
+          var AddSgLessonNameShortCodeLink = `<span id="SgLessonNameShortCodeContainer" style="padding: 0px 0px 0px 0.1rem;"><a href="JavaScript:void(0);" id="SgLessonNameShortCode" style="text-decoration: none;" title="In the Assignments Comments text box, replace the [[LessonName]] Short Code with the title of the current lesson" alt="In the Assignments Comments text box, replace the [[LessonName]] Short Code with the title of the current lesson"><span>📄</span></a></span>`;
+
+          const nameSpAdvance = document.querySelectorAll(("." + namespace + "_next"));
+          //console.log(nameSpAdvance)
+
+          //console.log('Active and true');
+
+          if (!hasRubric) {
+
+            document.querySelectorAll('#rightside_inner .content_box h2')[1].innerHTML += AddSgLessonNameShortCodeLink;
+
+            document.querySelectorAll('#rightside_inner .content_box h2')[1].innerHTML += AddSgStudentNameShortCodeLink;
+
+            document.querySelectorAll('#rightside_inner .content_box h2')[1].innerHTML += AddSgStudentNameGreetingLink;
+
+            document.querySelectorAll('#rightside_inner .content_box h2')[1].innerHTML += AddSgStudentNameSalutationLink;
+
+            document.getElementById("SgLessonNameShortCode").addEventListener("click", replaceSgLessonNameShortCode);
+
+            document.getElementById("SgStudentNameShortCode").addEventListener("click", replaceSgStudentNameShortCode);
+
+            document.getElementById("SgGreeting").addEventListener("click", addSgGreeting);
+
+            document.getElementById("SgSalutation").addEventListener("click", addSgSalutation);
+
+            //document.getElementById("next-student-button").addEventListener("mouseover", launchShortCodeReplacementFunctions);
+
+            //document.getElementById("prev-student-button").addEventListener("mouseover", launchShortCodeReplacementFunctions);
+
+            //document.getElementById("combo_box_container").addEventListener("mouseover", launchShortCodeReplacementFunctions);
+
+            ['mouseover','ontouchstart','blur','click','focus'].forEach( evt =>
+              document.getElementById("next-student-button").addEventListener(evt, launchShortCodeReplacementFunctions, false)
+            );
+
+            ['mouseover','ontouchstart','blur','click','focus'].forEach( evt =>
+              document.getElementById("prev-student-button").addEventListener(evt, launchShortCodeReplacementFunctions, false)
+            );
+
+            ['mouseover','ontouchstart','blur','click','focus'].forEach( evt =>
+              document.getElementById("combo_box_container").addEventListener(evt, launchShortCodeReplacementFunctions, false)
+            );
+
+            ['mouseover','ontouchstart','blur','click','focus'].forEach( evt =>
+              document.getElementById("comment_submit_button").addEventListener(evt, launchShortCodeReplacementFunctions, false)
+            );
+
+            /*['mouseover','ontouchstart','blur','click','focus'].forEach( evt =>
+              document.getElementById("grading-box-extended").addEventListener(evt, launchShortCodeReplacementFunctions, false)
+            );*/
+
+            //const nameSpAdvance = document.querySelectorAll(("." + namespace + "_next"));
+            for (let i = 0; i < nameSpAdvance.length; i++) {
+              nameSpAdvance[i].addEventListener('mouseover', launchShortCodeReplacementFunctions, false);
+              nameSpAdvance[i].addEventListener('ontouchstart', launchShortCodeReplacementFunctions, false);
+              nameSpAdvance[i].addEventListener('blur', launchShortCodeReplacementFunctions, false);
+              nameSpAdvance[i].addEventListener('click', launchShortCodeReplacementFunctions, false);
+              nameSpAdvance[i].addEventListener('focus', launchShortCodeReplacementFunctions, false);
+            };
+
+            // Function to observe changes in the student_id parameter
+            let lastStudentId = new URL(window.location.href).searchParams.get('student_id');
+
+            // Function to handle URL changes and reattach event listeners
+            function handleUrlChange() {
+                const newStudentId = new URL(window.location.href).searchParams.get('student_id');
+                if (newStudentId !== lastStudentId) {
+                    console.log(`student_id changed to ${newStudentId}`);
+                    lastStudentId = newStudentId;
+
+                    // Reattach event listeners after a delay
+                    setTimeout(function() {
+                        addCommentLibraryButtonListener();
+                    }, 500);
+                }
+            }
+
+            // Function to observe changes in the student_id parameter using the popstate event
+            function observeUrlChanges() {
+                // Listen for popstate events (back/forward navigation)
+                window.addEventListener('popstate', handleUrlChange);
+
+                // Also intercept changes made via pushState or replaceState
+                const originalPushState = history.pushState;
+                const originalReplaceState = history.replaceState;
+
+                history.pushState = function(...args) {
+                    originalPushState.apply(this, args);
+                    handleUrlChange(); // Check URL after pushState
+                };
+
+                history.replaceState = function(...args) {
+                    originalReplaceState.apply(this, args);
+                    handleUrlChange(); // Check URL after replaceState
+                };
+            }
+
+            let isCommentLibraryListenerAttached = false;  // Flag to track if listener is already attached
+
+            // Function to check and add the listener if it is not already attached
+            function checkAndAddCommentLibraryListener() {
+                if (!isCommentLibraryListenerAttached) {
+                    console.log('Listener not attached, attaching it now.');
+                    addCommentLibraryButtonListener();
+                    isCommentLibraryListenerAttached = true;  // Set the flag to true after attaching the listener
+                } else {
+                    console.log('Listener already attached.');
+                }
+            }
+
+            // Function to add event listeners to the div elements inside the library area
+            function addListenersToLibraryComments() {
+              // Find all div elements inside the span with data-testid="library-comment-area"
+              const commentDivs = document.querySelectorAll('[data-testid="library-comment-area"] [data-testid="comment-library"]');
+
+              // Loop through each div and add the click event listener
+              commentDivs.forEach(function(div) {
+                  div.addEventListener('click', handleCommentDivClick);
+              });
+            }
+
+            // Function to handle the click event on the comment divs
+            function handleCommentDivClick() {
+              console.log('Comment div clicked, triggering shortcode replacement.');
+
+              // Call your function with a 100ms delay when any of the divs are clicked
+              setTimeout(function() {
+                  launchShortCodeReplacementFunctions();
+              }, 500);
+
+              // Since the DOM might be destroyed and recreated, re-run the setup
+              console.log('Re-running setup to handle DOM recreation.');
+              setTimeout(initializeEventListeners, 500);  // Delay to allow DOM to be recreated before reattaching listeners
+            }
+
+            // Function to add a listener to the comment library button and trigger listeners when it is clicked
+            function addCommentLibraryButtonListener() {
+              // Find the button with data-testid="comment-library-link"
+              const commentLibraryButton = document.querySelector('[data-testid="comment-library-link"]');
+
+              // Add a click event listener to the button to open the drawer
+              if (commentLibraryButton) {
+                  commentLibraryButton.addEventListener('click', function() {
+                      console.log('Comment library button clicked, adding event listeners to comment divs.');
+
+                      // Wait for the drawer to open, then add listeners to the comment divs
+                      setTimeout(function() {
+                          addListenersToLibraryComments();
+                      }, 300); // Adjust the delay if necessary
+                  });
+              } else {
+                  console.error('Comment library button not found.');
+              }
+            }
+
+            // Function to initialize event listeners for both button and comment divs
+            function initializeEventListeners() {
+              console.log('Initializing event listeners.');
+              
+              // Add event listener to the button
+              addCommentLibraryButtonListener();
+
+              // Add event listeners to the comment divs (in case they are present from the start)
+              addListenersToLibraryComments();
+            }
+
+            // Attach a hover event listener to check if the click listener is attached
+            const commentLibraryButton = document.querySelector('[data-testid="comment-library-link"]');
+            if (commentLibraryButton) {
+                commentLibraryButton.addEventListener('mouseover', checkAndAddCommentLibraryListener);
+            } else {
+                console.error('Comment library button not found for hover check.');
+            }
+
+            // Initial setup when the DOM is loaded
+            console.log('DOM loaded, setting up event listeners.');
+            initializeEventListeners();
+
+            // Start observing URL changes
+            observeUrlChanges();
+
+
+
+          } else if (hasRubric) {
+
+            document.querySelectorAll('#rightside_inner .content_box h2')[4].innerHTML += AddSgLessonNameShortCodeLink;
+
+            document.querySelectorAll('#rightside_inner .content_box h2')[4].innerHTML += AddSgStudentNameShortCodeLink;
+
+            document.querySelectorAll('#rightside_inner .content_box h2')[4].innerHTML += AddSgStudentNameGreetingLink;
+
+            document.querySelectorAll('#rightside_inner .content_box h2')[4].innerHTML += AddSgStudentNameSalutationLink;
+
+            document.getElementById("SgLessonNameShortCode").addEventListener("click", replaceSgLessonNameShortCode);
+
+            document.getElementById("SgStudentNameShortCode").addEventListener("click", replaceSgStudentNameShortCode);
+
+            document.getElementById("SgGreeting").addEventListener("click", addSgGreeting);
+
+            document.getElementById("SgSalutation").addEventListener("click", addSgSalutation);
+
+            //document.getElementById("next-student-button").addEventListener("mouseover", launchShortCodeReplacementFunctions);
+
+            //document.getElementById("prev-student-button").addEventListener("mouseover", launchShortCodeReplacementFunctions);
+
+            //document.getElementById("combo_box_container").addEventListener("mouseover", launchShortCodeReplacementFunctions);
+
+            //var rubricSaveButton = document.querySelector('div#rubric_holder button.save_rubric_button');
+
+            ['mouseover','ontouchstart','blur','click','focus'].forEach( evt =>
+              document.querySelector('div#rubric_holder button.save_rubric_button').addEventListener(evt, launchShortCodeReplacementFunctions, false)
+            );
+
+            ['mouseover','ontouchstart','blur','click','focus'].forEach( evt =>
+              document.getElementById("next-student-button").addEventListener(evt, launchShortCodeReplacementFunctions, false)
+            );
+
+            ['mouseover','ontouchstart','blur','click','focus'].forEach( evt =>
+              document.getElementById("prev-student-button").addEventListener(evt, launchShortCodeReplacementFunctions, false)
+            );
+
+            ['mouseover','ontouchstart','blur','click','focus'].forEach( evt =>
+              document.getElementById("combo_box_container").addEventListener(evt, launchShortCodeReplacementFunctions, false)
+            );
+
+            ['mouseover','ontouchstart','blur','click','focus'].forEach( evt =>
+              document.getElementById("comment_submit_button").addEventListener(evt, launchShortCodeReplacementFunctions, false)
+            );
+
+            /*['mouseover','ontouchstart','blur','click','focus'].forEach( evt =>
+              document.getElementById("grading-box-extended").addEventListener(evt, launchShortCodeReplacementFunctions, false)
+            );*/
+
+            //const nameSpAdvance = document.querySelectorAll(("." + namespace + "_next"));
+            // Original code
+            for (let i = 0; i < nameSpAdvance.length; i++) {
+              nameSpAdvance[i].addEventListener('mouseover', launchShortCodeReplacementFunctions, false);
+              nameSpAdvance[i].addEventListener('ontouchstart', launchShortCodeReplacementFunctions, false);
+              nameSpAdvance[i].addEventListener('blur', launchShortCodeReplacementFunctions, false);
+              nameSpAdvance[i].addEventListener('click', launchShortCodeReplacementFunctions, false);
+              nameSpAdvance[i].addEventListener('focus', launchShortCodeReplacementFunctions, false);
+            };
+
+            // The following code block can be helpful to prevent the short code replacement functions 
+            // from being called multiple times and therefore causing errors.
+            // I'm reverting back to the original code for now. Because I addressed the issue in a different way.
+            // If the original code is causing issues, we can move to the following code block. - DWS
+
+            /*let isProcessing = false;
+
+            for (let i = 0; i < nameSpAdvance.length; i++) {
+                // Mouseover event to show the short code conversion
+                nameSpAdvance[i].addEventListener('mouseover', () => {
+                    if (isProcessing) return; // Prevent re-execution if already processing
+                    isProcessing = true;
+
+                    launchShortCodeReplacementFunctions()
+                        .then(() => {
+                            console.log("Short codes replaced on mouseover");
+                        })
+                        .catch((error) => {
+                            console.error("Error processing mouseover event:", error);
+                        })
+                        .finally(() => {
+                            isProcessing = false; // Reset the flag after processing
+                        });
+                }, false);
+
+                // Click event to perform the final actions
+                nameSpAdvance[i].addEventListener('click', () => {
+                    if (isProcessing) return; // Prevent re-execution if already processing
+                    isProcessing = true;
+
+                    launchShortCodeReplacementFunctions()
+                        .then(() => {
+                            console.log("Short codes replaced on click");
+                        })
+                        .catch((error) => {
+                            console.error("Error processing click event:", error);
+                        })
+                        .finally(() => {
+                            isProcessing = false; // Reset the flag after processing
+                        });
+                }, false);
+            }*/
+
+            // Function to observe changes in the student_id parameter
+            let lastStudentId = new URL(window.location.href).searchParams.get('student_id');
+
+            // Function to handle URL changes and reattach event listeners
+            function handleUrlChange() {
+                const newStudentId = new URL(window.location.href).searchParams.get('student_id');
+                if (newStudentId !== lastStudentId) {
+                    console.log(`student_id changed to ${newStudentId}`);
+                    lastStudentId = newStudentId;
+
+                    // Reattach event listeners after a delay
+                    setTimeout(function() {
+                        addCommentLibraryButtonListener();
+                    }, 500);
+                }
+            }
+
+            // Function to observe changes in the student_id parameter using the popstate event
+            function observeUrlChanges() {
+                // Listen for popstate events (back/forward navigation)
+                window.addEventListener('popstate', handleUrlChange);
+
+                // Also intercept changes made via pushState or replaceState
+                const originalPushState = history.pushState;
+                const originalReplaceState = history.replaceState;
+
+                history.pushState = function(...args) {
+                    originalPushState.apply(this, args);
+                    handleUrlChange(); // Check URL after pushState
+                };
+
+                history.replaceState = function(...args) {
+                    originalReplaceState.apply(this, args);
+                    handleUrlChange(); // Check URL after replaceState
+                };
+            }
+
+            let isCommentLibraryListenerAttached = false;  // Flag to track if listener is already attached
+
+            // Function to check and add the listener if it is not already attached
+            function checkAndAddCommentLibraryListener() {
+                if (!isCommentLibraryListenerAttached) {
+                    console.log('Listener not attached, attaching it now.');
+                    addCommentLibraryButtonListener();
+                    isCommentLibraryListenerAttached = true;  // Set the flag to true after attaching the listener
+                } else {
+                    console.log('Listener already attached.');
+                }
+            }
+
+            // Function to add event listeners to the div elements inside the library area
+            function addListenersToLibraryComments() {
+              // Find all div elements inside the span with data-testid="library-comment-area"
+              const commentDivs = document.querySelectorAll('[data-testid="library-comment-area"] [data-testid="comment-library"]');
+
+              // Loop through each div and add the click event listener
+              commentDivs.forEach(function(div) {
+                  div.addEventListener('click', handleCommentDivClick);
+              });
+            }
+
+            // Function to handle the click event on the comment divs
+            function handleCommentDivClick() {
+              console.log('Comment div clicked, triggering shortcode replacement.');
+
+              // Call your function with a 100ms delay when any of the divs are clicked
+              setTimeout(function() {
+                  launchShortCodeReplacementFunctions();
+              }, 500);
+
+              // Since the DOM might be destroyed and recreated, re-run the setup
+              console.log('Re-running setup to handle DOM recreation.');
+              setTimeout(initializeEventListeners, 500);  // Delay to allow DOM to be recreated before reattaching listeners
+            }
+
+            // Function to add a listener to the comment library button and trigger listeners when it is clicked
+            function addCommentLibraryButtonListener() {
+              // Find the button with data-testid="comment-library-link"
+              const commentLibraryButton = document.querySelector('[data-testid="comment-library-link"]');
+
+              // Add a click event listener to the button to open the drawer
+              if (commentLibraryButton) {
+                  commentLibraryButton.addEventListener('click', function() {
+                      console.log('Comment library button clicked, adding event listeners to comment divs.');
+
+                      // Wait for the drawer to open, then add listeners to the comment divs
+                      setTimeout(function() {
+                          addListenersToLibraryComments();
+                      }, 300); // Adjust the delay if necessary
+                  });
+              } else {
+                  console.error('Comment library button not found.');
+              }
+            }
+
+            // Function to initialize event listeners for both button and comment divs
+            function initializeEventListeners() {
+              console.log('Initializing event listeners.');
+              
+              // Add event listener to the button
+              addCommentLibraryButtonListener();
+
+              // Add event listeners to the comment divs (in case they are present from the start)
+              addListenersToLibraryComments();
+            }
+
+            // Attach a hover event listener to check if the click listener is attached
+            const commentLibraryButton = document.querySelector('[data-testid="comment-library-link"]');
+            if (commentLibraryButton) {
+                commentLibraryButton.addEventListener('mouseover', checkAndAddCommentLibraryListener);
+            } else {
+                console.error('Comment library button not found for hover check.');
+            }
+
+            // Function to simulate your short code replacement logic
+            //function launchShortCodeReplacementFunctions() {
+            //  console.log("ShortCode Replacement Function Executed");
+              // Your actual short code replacement logic goes here
+            //}
+
+            // Initial setup when the DOM is loaded
+            console.log('DOM loaded, setting up event listeners.');
+            initializeEventListeners();
+
+            // Start observing URL changes
+            observeUrlChanges();
+
+
+
+          }
+
+        }
+    }
+
+    function addSgGreeting() {
+      // TODO: Rewrite the replacement logic to follow the replaceSgStudentNameShortCode() code syntax. - DWS
 
       if (speed_grader == 'speed_grader') {
 
-        // ORG var when it was located in the form (moved it out of the form)
-        //var AddSgStudentNameGreetingLink = `<span class="fOyUs_bGBk dJCgj_bGBk" id="SgGreetingContainer"><div class="fOyUs_bGBk fOyUs_desw" style="padding: 0px 0px 0px 0.5rem;"><a href="JavaScript:void(0);" id="SgGreeting" style="" title="Add Student Name Greeting" alt="Add Student Name Greeting"><span>😬</span></a></div></span>`;
-
-        // Had to adjust the location of the variable
-        // The form it was originally enclosed in stopped working.
-        //var SgTextArea = document.getElementById('speed_grader_comment_textarea_mount_point');
-        //SgTextArea.firstElementChild.innerHTML += AddSgStudentNameGreetingLink;
-
-        var AddSgStudentNameGreetingLink = `<span id="SgGreetingContainer" style="padding: 0px 0px 0px 0.1rem;"><a href="JavaScript:void(0);" id="SgGreeting" style="text-decoration: none;" title="In the Assignments Comments text box, add a greeting and the first name of the current student" alt="In the Assignments Comments text box, add a greeting and the first name of the current student"><span>😬</span></a></span>`;
-
-        var AddSgStudentNameSalutationLink = `<span id="SgSalutationContainer" style="padding: 0px 0px 0px 0.1rem;"><a href="JavaScript:void(0);" id="SgSalutation" style="text-decoration: none;" title="In the Assignments Comments text box, add the first name of the current student and a salutation" alt="In the Assignments Comments text box, add the first name of the current student and a salutation"><span>😃</span></a></span>`;
-
-        var AddSgStudentNameShortCodeLink = `<span id="SgStudentNameShortCodeContainer" style="padding: 0px 0px 0px 0.1rem;"><a href="JavaScript:void(0);" id="SgStudentNameShortCode" style="text-decoration: none;" title="In the Assignments Comments text box, replace the [[StudentName]] Short Code with the first name of the current student" alt="In the Assignments Comments text box, replace the [[StudentName]] Short Code with the first name of the current student"><span>🤓</span></a></span>`;
-
-        var AddSgLessonNameShortCodeLink = `<span id="SgLessonNameShortCodeContainer" style="padding: 0px 0px 0px 0.1rem;"><a href="JavaScript:void(0);" id="SgLessonNameShortCode" style="text-decoration: none;" title="In the Assignments Comments text box, replace the [[LessonName]] Short Code with the title of the current lesson" alt="In the Assignments Comments text box, replace the [[LessonName]] Short Code with the title of the current lesson"><span>📄</span></a></span>`;
-
-        const nameSpAdvance = document.querySelectorAll(("." + namespace + "_next"));
-        //console.log(nameSpAdvance)
-
-        //console.log('Active and true');
-
-        if (!hasRubric) {
-
-          document.querySelectorAll('#rightside_inner .content_box h2')[1].innerHTML += AddSgLessonNameShortCodeLink;
-
-          document.querySelectorAll('#rightside_inner .content_box h2')[1].innerHTML += AddSgStudentNameShortCodeLink;
-
-          document.querySelectorAll('#rightside_inner .content_box h2')[1].innerHTML += AddSgStudentNameGreetingLink;
-
-          document.querySelectorAll('#rightside_inner .content_box h2')[1].innerHTML += AddSgStudentNameSalutationLink;
-
-          document.getElementById("SgLessonNameShortCode").addEventListener("click", replaceSgLessonNameShortCode);
-
-          document.getElementById("SgStudentNameShortCode").addEventListener("click", replaceSgStudentNameShortCode);
-
-          document.getElementById("SgGreeting").addEventListener("click", addSgGreeting);
-
-          document.getElementById("SgSalutation").addEventListener("click", addSgSalutation);
-
-          //document.getElementById("next-student-button").addEventListener("mouseover", launchShortCodeReplacementFunctions);
-
-          //document.getElementById("prev-student-button").addEventListener("mouseover", launchShortCodeReplacementFunctions);
-
-          //document.getElementById("combo_box_container").addEventListener("mouseover", launchShortCodeReplacementFunctions);
-
-          ['mouseover','ontouchstart','blur','click','focus'].forEach( evt =>
-            document.getElementById("next-student-button").addEventListener(evt, launchShortCodeReplacementFunctions, false)
-          );
-
-          ['mouseover','ontouchstart','blur','click','focus'].forEach( evt =>
-            document.getElementById("prev-student-button").addEventListener(evt, launchShortCodeReplacementFunctions, false)
-          );
-
-          ['mouseover','ontouchstart','blur','click','focus'].forEach( evt =>
-            document.getElementById("combo_box_container").addEventListener(evt, launchShortCodeReplacementFunctions, false)
-          );
-
-          ['mouseover','ontouchstart','blur','click','focus'].forEach( evt =>
-            document.getElementById("comment_submit_button").addEventListener(evt, launchShortCodeReplacementFunctions, false)
-          );
-
-          //const nameSpAdvance = document.querySelectorAll(("." + namespace + "_next"));
-          for (let i = 0; i < nameSpAdvance.length; i++) {
-            nameSpAdvance[i].addEventListener('mouseover', launchShortCodeReplacementFunctions, false);
-            nameSpAdvance[i].addEventListener('ontouchstart', launchShortCodeReplacementFunctions, false);
-            nameSpAdvance[i].addEventListener('blur', launchShortCodeReplacementFunctions, false);
-            nameSpAdvance[i].addEventListener('click', launchShortCodeReplacementFunctions, false);
-            nameSpAdvance[i].addEventListener('focus', launchShortCodeReplacementFunctions, false);
-          };
+        //var studentFullName = document.getElementById('students_selectmenu-button').innerText
+        var studentFullName = document.querySelector('#students_selectmenu-button .ui-selectmenu-status .ui-selectmenu-item-header').innerText
 
 
-        } else if (hasRubric) {
+        //console.log(studentFullName)
 
-          document.querySelectorAll('#rightside_inner .content_box h2')[4].innerHTML += AddSgLessonNameShortCodeLink;
+        var studentFullNameArray = studentFullName.split(/[ ]+/);
+        //var studentFullNameArray = studentFullName.split(" "); //Both ways work
 
-          document.querySelectorAll('#rightside_inner .content_box h2')[4].innerHTML += AddSgStudentNameShortCodeLink;
+        //console.log(studentFullNameArray)
 
-          document.querySelectorAll('#rightside_inner .content_box h2')[4].innerHTML += AddSgStudentNameGreetingLink;
+        var studentFirstName = studentFullNameArray[0];
 
-          document.querySelectorAll('#rightside_inner .content_box h2')[4].innerHTML += AddSgStudentNameSalutationLink;
+        //console.log(studentFirstName)
 
-          document.getElementById("SgLessonNameShortCode").addEventListener("click", replaceSgLessonNameShortCode);
 
-          document.getElementById("SgStudentNameShortCode").addEventListener("click", replaceSgStudentNameShortCode);
+        // #speed_grader_comment_textarea_mount_point
+        // #speed_grader_comment_textarea
 
-          document.getElementById("SgGreeting").addEventListener("click", addSgGreeting);
 
-          document.getElementById("SgSalutation").addEventListener("click", addSgSalutation);
+        var commentBoxTextArea = document.getElementById('speed_grader_comment_textarea')
+        var comment_rce_textarea_ifr = document.getElementById("comment_rce_textarea_ifr");
 
-          //document.getElementById("next-student-button").addEventListener("mouseover", launchShortCodeReplacementFunctions);
+        if (commentBoxTextArea){
 
-          //document.getElementById("prev-student-button").addEventListener("mouseover", launchShortCodeReplacementFunctions);
+          // Basic add
+          // commentBoxTextArea.value += studentFirstName
 
-          //document.getElementById("combo_box_container").addEventListener("mouseover", launchShortCodeReplacementFunctions);
+          var commentBoxTextAreaValue = commentBoxTextArea.value
 
-          //var rubricSaveButton = document.querySelector('div#rubric_holder button.save_rubric_button');
+          var greeting = "Hi " + studentFirstName + ",\n\n"
 
-          ['mouseover','ontouchstart','blur','click','focus'].forEach( evt =>
-            document.querySelector('div#rubric_holder button.save_rubric_button').addEventListener(evt, launchShortCodeReplacementFunctions, false)
-          );
+          var greetingAndComments = greeting + commentBoxTextAreaValue
 
-          ['mouseover','ontouchstart','blur','click','focus'].forEach( evt =>
-            document.getElementById("next-student-button").addEventListener(evt, launchShortCodeReplacementFunctions, false)
-          );
+          commentBoxTextArea.value = greetingAndComments
 
-          ['mouseover','ontouchstart','blur','click','focus'].forEach( evt =>
-            document.getElementById("prev-student-button").addEventListener(evt, launchShortCodeReplacementFunctions, false)
-          );
 
-          ['mouseover','ontouchstart','blur','click','focus'].forEach( evt =>
-            document.getElementById("combo_box_container").addEventListener(evt, launchShortCodeReplacementFunctions, false)
-          );
+        } else if (comment_rce_textarea_ifr) {
 
-          ['mouseover','ontouchstart','blur','click','focus'].forEach( evt =>
-            document.getElementById("comment_submit_button").addEventListener(evt, launchShortCodeReplacementFunctions, false)
-          );
+          var iframeDocContent = comment_rce_textarea_ifr.contentDocument || comment_rce_textarea_ifr.contentWindow.document;
+          var tinymceElement = iframeDocContent.getElementById("tinymce");
+          var tinymceValue = tinymceElement ? tinymceElement.innerHTML : null;
 
-          //const nameSpAdvance = document.querySelectorAll(("." + namespace + "_next"));
-          for (let i = 0; i < nameSpAdvance.length; i++) {
-            nameSpAdvance[i].addEventListener('mouseover', launchShortCodeReplacementFunctions, false);
-            nameSpAdvance[i].addEventListener('ontouchstart', launchShortCodeReplacementFunctions, false);
-            nameSpAdvance[i].addEventListener('blur', launchShortCodeReplacementFunctions, false);
-            nameSpAdvance[i].addEventListener('click', launchShortCodeReplacementFunctions, false);
-            nameSpAdvance[i].addEventListener('focus', launchShortCodeReplacementFunctions, false);
-          };
 
+          var greeting = "<p>Hi " + studentFirstName + ",</p>"
+
+          var greetingAndComments = greeting + tinymceValue
+
+          tinymceElement.innerHTML = greetingAndComments;
+          //tinymceElement.dispatchEvent(new Event('input', {'bubbles' : true}));
+          tinymceElement.dispatchEvent(new Event('input'));
+          //setTimeout(() => tinymceElement.dispatchEvent(new Event('input')), 10);
 
         }
 
+
       }
-  }
-
-  function addSgGreeting() {
-
-    if (speed_grader == 'speed_grader') {
-
-      //var studentFullName = document.getElementById('students_selectmenu-button').innerText
-      var studentFullName = document.querySelector('#students_selectmenu-button .ui-selectmenu-status .ui-selectmenu-item-header').innerText
-
-
-      //console.log(studentFullName)
-
-      var studentFullNameArray = studentFullName.split(/[ ]+/);
-      //var studentFullNameArray = studentFullName.split(" "); //Both ways work
-
-      //console.log(studentFullNameArray)
-
-      var studentFirstName = studentFullNameArray[0];
-
-      //console.log(studentFirstName)
-
-
-      // #speed_grader_comment_textarea_mount_point
-      // #speed_grader_comment_textarea
-
-
-      var commentBoxTextArea = document.getElementById('speed_grader_comment_textarea')
-
-      // Basic add
-      // commentBoxTextArea.value += studentFirstName
-
-      var commentBoxTextAreaValue = commentBoxTextArea.value
-
-      var greeting = "Hi " + studentFirstName + ",\n\n"
-
-      var greetingAndComments = greeting + commentBoxTextAreaValue
-
-      commentBoxTextArea.value = greetingAndComments
-
-
     }
-  }
 
-  function addSgSalutation() {
+    function addSgSalutation() {
+      // TODO: Rewrite the replacement logic to follow the replaceSgStudentNameShortCode() code syntax. - DWS
 
-    if (speed_grader == 'speed_grader') {
+      if (speed_grader == 'speed_grader') {
 
-      //var studentFullName = document.getElementById('students_selectmenu-button').innerText
-      var studentFullName = document.querySelector('#students_selectmenu-button .ui-selectmenu-status .ui-selectmenu-item-header').innerText
-
-
-      //console.log(studentFullName)
-
-      var studentFullNameArray = studentFullName.split(/[ ]+/);
-      //var studentFullNameArray = studentFullName.split(" "); //Both ways work
-
-      //console.log(studentFullNameArray)
-
-      var studentFirstName = studentFullNameArray[0];
-
-      //console.log(studentFirstName)
+        //var studentFullName = document.getElementById('students_selectmenu-button').innerText
+        var studentFullName = document.querySelector('#students_selectmenu-button .ui-selectmenu-status .ui-selectmenu-item-header').innerText
 
 
-      // #speed_grader_comment_textarea_mount_point
-      // #speed_grader_comment_textarea
+        //console.log(studentFullName)
+
+        var studentFullNameArray = studentFullName.split(/[ ]+/);
+        //var studentFullNameArray = studentFullName.split(" "); //Both ways work
+
+        //console.log(studentFullNameArray)
+
+        var studentFirstName = studentFullNameArray[0];
+
+        //console.log(studentFirstName)
 
 
-      var commentBoxTextArea = document.getElementById('speed_grader_comment_textarea')
-
-      // Basic add
-      // commentBoxTextArea.value += studentFirstName
-
-      var commentBoxTextAreaValue = commentBoxTextArea.value
-
-      //var salutation = " " + studentFirstName + "!" // Space or no space???
-      var salutation = studentFirstName + "!"
-
-      var salutationAndComments = commentBoxTextAreaValue + salutation
-
-      commentBoxTextArea.value = salutationAndComments
+        // #speed_grader_comment_textarea_mount_point
+        // #speed_grader_comment_textarea
 
 
+        var commentBoxTextArea = document.getElementById('speed_grader_comment_textarea');
+        var comment_rce_textarea_ifr = document.getElementById("comment_rce_textarea_ifr");
+
+        if (commentBoxTextArea){
+
+          // Basic add
+          // commentBoxTextArea.value += studentFirstName
+
+          var commentBoxTextAreaValue = commentBoxTextArea.value
+
+          //var salutation = " " + studentFirstName + "!" // Space or no space???
+          var salutation = studentFirstName + "!"
+
+          var salutationAndComments = commentBoxTextAreaValue + salutation
+
+          commentBoxTextArea.value = salutationAndComments
+
+
+        } else if (comment_rce_textarea_ifr) {
+
+          var iframeDocContent = comment_rce_textarea_ifr.contentDocument || comment_rce_textarea_ifr.contentWindow.document;
+          var tinymceElement = iframeDocContent.getElementById("tinymce");
+          var tinymceValue = tinymceElement ? tinymceElement.innerHTML : null;
+
+          //var salutation = " " + studentFirstName + "!" // Space or no space???
+          var salutation = studentFirstName + "!";
+
+          if (tinymceElement) {
+            // Function to insert text at the current cursor position
+            function insertTextAtCursor(text) {
+              tinymceElement.focus();  // Focus on the iframe to ensure cursor is active
+      
+              // Get the current selection from the iframe document
+              const selection = iframeDocContent.getSelection();
+              
+              if (!selection.rangeCount) return;
+      
+              const range = selection.getRangeAt(0);  // Get the range (cursor position)
+              range.deleteContents();  // Remove any selected content (if any)
+      
+              // Create a text node with the string you want to insert
+              const textNode = iframeDocContent.createTextNode(text);
+      
+              // Insert the text node at the current cursor position
+              range.insertNode(textNode);
+      
+              // Move the cursor after the inserted text
+              range.setStartAfter(textNode);
+              range.setEndAfter(textNode);
+      
+              // Clear any selection and update the range position
+              selection.removeAllRanges();
+              selection.addRange(range);
+            }
+      
+            // Example: Use this function to insert your string at the cursor after 5 seconds
+            //setTimeout(function () {
+            //  insertTextAtCursor(salutation);
+            //}, 5000);
+            insertTextAtCursor(salutation);
+          }
+
+          //var salutationAndComments = tinymceValue + salutation;
+
+          //tinymceElement.innerHTML = salutationAndComments;
+          //tinymceElement.dispatchEvent(new Event('input', {'bubbles' : true}));
+          tinymceElement.dispatchEvent(new Event('input'));
+          //setTimeout(() => tinymceElement.dispatchEvent(new Event('input')), 10);
+
+        }
+
+
+      }
     }
-  }
+  } // End of setup()
 
   function replaceSgStudentNameShortCode() {
+    return new Promise((resolve, reject) => {
+      try {
 
-    if (speed_grader == 'speed_grader') {
+        if (speed_grader == 'speed_grader') {
 
-      //var studentFullName = document.getElementById('students_selectmenu-button').innerText
-      var studentFullName = document.querySelector('#students_selectmenu-button .ui-selectmenu-status .ui-selectmenu-item-header').innerText
-
-
-      //console.log(studentFullName)
-
-      var studentFullNameArray = studentFullName.split(/[ ]+/);
-      //var studentFullNameArray = studentFullName.split(" "); //Both ways work
-
-      //console.log(studentFullNameArray)
-
-      var studentFirstName = studentFullNameArray[0];
-
-      //console.log(studentFirstName)
+          //var studentFullName = document.getElementById('students_selectmenu-button').innerText
+          var studentFullName = document.querySelector('#students_selectmenu-button .ui-selectmenu-status .ui-selectmenu-item-header').innerText
 
 
-      // #speed_grader_comment_textarea_mount_point
-      // #speed_grader_comment_textarea
+          //console.log(studentFullName)
+
+          var studentFullNameArray = studentFullName.split(/[ ]+/);
+          //var studentFullNameArray = studentFullName.split(" "); //Both ways work
+
+          //console.log(studentFullNameArray)
+
+          var studentFirstName = studentFullNameArray[0];
+
+          //console.log(studentFirstName)
 
 
-      var commentBoxTextArea = document.getElementById('speed_grader_comment_textarea')
-
-      // Basic add
-      // commentBoxTextArea.value += studentFirstName
-
-      var commentBoxTextAreaValue = commentBoxTextArea.value
-
-      const regex = /(\[{2}StudentName\]{2})/gm;
-
-      var commentBoxTextAreaNewValue = commentBoxTextAreaValue.replaceAll(regex, studentFirstName);
-
-      commentBoxTextArea.value = commentBoxTextAreaNewValue
+          // #speed_grader_comment_textarea_mount_point
+          // #speed_grader_comment_textarea
 
 
-    }
+          var commentBoxTextArea = document.getElementById('speed_grader_comment_textarea');
+          var comment_rce_textarea_ifr = document.getElementById("comment_rce_textarea_ifr");
+
+          if (commentBoxTextArea){
+
+            // Basic add
+            // commentBoxTextArea.value += studentFirstName
+
+            var commentBoxTextAreaValue = commentBoxTextArea.value
+
+            const regex = /(\[{2}StudentName\]{2})/gm;
+
+            var commentBoxTextAreaNewValue = commentBoxTextAreaValue.replaceAll(regex, studentFirstName);
+
+            commentBoxTextArea.value = commentBoxTextAreaNewValue
+
+
+          } else if (comment_rce_textarea_ifr) {
+
+            var editor = tinymce.get('comment_rce_textarea'); // Get the TinyMCE editor instance
+                    if (editor) {
+                        editor.focus(); // Focus the editor to ensure the cursor is active
+
+                        // Save the current selection
+                        const bookmark = editor.selection.getBookmark(2, true);
+
+                        // Replace the content
+                        const content = editor.getContent();
+                        const regex = /(\[{2}StudentName\]{2})/gm;
+                        const newContent = content.replace(regex, studentFirstName);
+                        editor.setContent(newContent);
+
+                        // Restore the selection
+              editor.selection.moveToBookmark(bookmark);
+            }
+
+
+          }
+
+
+        }
+        resolve(); // Resolve the promise when done
+      } catch (error) {
+        reject(error); // Reject the promise if an error occurs
+      }
+    });
   }
 
   function replaceSgLessonNameShortCode() {
+    return new Promise((resolve, reject) => {
+      try {
 
-    if (speed_grader == 'speed_grader') {
+        if (speed_grader == 'speed_grader') {
 
-      var lessonName = document.querySelector('#assignment_url h2.assignmentDetails__Title').innerText
+          var lessonName = document.querySelector('#assignment_url h2.assignmentDetails__Title').innerText;
+          var commentBoxTextArea = document.getElementById('speed_grader_comment_textarea');
+          var comment_rce_textarea_ifr = document.getElementById("comment_rce_textarea_ifr");
 
-      //console.log(lessonName)
+          if (commentBoxTextArea){
 
-      var commentBoxTextArea = document.getElementById('speed_grader_comment_textarea')
+            // Basic add
+            // commentBoxTextArea.value += studentFirstName
 
-      var commentBoxTextAreaValue = commentBoxTextArea.value
+            var commentBoxTextAreaValue = commentBoxTextArea.value
 
-      const regex = /(\[{2}LessonName\]{2})/gm;
+            const regex = /(\[{2}LessonName\]{2})/gm;
 
-      var commentBoxTextAreaNewValue = commentBoxTextAreaValue.replaceAll(regex, lessonName);
+            var commentBoxTextAreaNewValue = commentBoxTextAreaValue.replaceAll(regex, lessonName);
 
-      commentBoxTextArea.value = commentBoxTextAreaNewValue
+            commentBoxTextArea.value = commentBoxTextAreaNewValue
 
 
-    }
+          } else if (comment_rce_textarea_ifr) {
+
+            var editor = tinymce.get('comment_rce_textarea'); // Get the TinyMCE editor instance
+                    if (editor) {
+                        editor.focus(); // Focus the editor to ensure the cursor is active
+
+                        // Save the current selection
+                        const bookmark = editor.selection.getBookmark(2, true);
+
+                        // Replace the content
+                        const content = editor.getContent();
+                        const regex = /(\[{2}LessonName\]{2})/gm;
+                        const newContent = content.replace(regex, lessonName);
+                        editor.setContent(newContent);
+
+                        // Restore the selection
+              editor.selection.moveToBookmark(bookmark);
+            }
+
+
+          }
+
+
+        }
+        resolve(); // Resolve the promise when done
+      } catch (error) {
+        reject(error); // Reject the promise if an error occurs
+      }
+    });
   }
 
   function launchShortCodeReplacementFunctions() {
 
-    if (speed_grader == 'speed_grader') {
-
-
-      replaceSgStudentNameShortCode();
-      replaceSgLessonNameShortCode();
-
-      //console.log('launchShortCodeReplacementFunctions() launched')
-
-    }
+    return new Promise((resolve, reject) => {
+      if (speed_grader == 'speed_grader') {
+          Promise.all([
+              replaceSgStudentNameShortCode(),
+              replaceSgLessonNameShortCode()
+          ]).then(() => {
+              console.log('replaceSgStudentNameShortCode() and replaceSgLessonNameShortCode() promise resolved. The REAL launchShortCodeReplacementFunctions() launched properly.');
+              resolve();
+          }).catch((error) => {
+              console.error("Error in shortcode replacement:", error);
+              reject(error);
+          });
+      } else {
+          resolve();
+      }
+      console.log('The REAL launchShortCodeReplacementFunctions() launched');
+    });
   }
+
+  // Ensure setup is only run once
+  if (!window.sgGreetingSetupDone) {
+    setup();
+    window.sgGreetingSetupDone = true;
+  }
+
+  // Return an object with both functions
+  return {
+      replaceSgStudentNameShortCode,
+      replaceSgLessonNameShortCode,
+      launchShortCodeReplacementFunctions
+  };
 
 }
 
@@ -2543,6 +3298,150 @@ function adjustExternalToolBox() {
     }
 }
 
+function stopCanvasFromRenamingLTI() {
+  if (typeof config.stopCanvasFromRenamingLTI !== 'undefined' && !config.stopCanvasFromRenamingLTI) {
+      return;
+  }
+  //console.log('stopCanvasFromRenamingLTI() is running');
+
+  //Globals for stopCanvasFromRenamingLTI functions
+  var getURLArray = document.URL.split(/\?(.+)?/)[0];
+  var parseURL = getURLArray.split('/');
+  var assignments = parseURL[5];
+  var edit = parseURL[7];
+
+
+  // NEW NEW design without JQuery...The DOM is super goofy. No setTimeout needed. This is the way.
+  function mycallback() {
+      setupStopCanvasFromRenamingLTIContainers();
+  }
+  //...
+  (function() {
+  if (window.addEventListener) {
+      addEventListener("load", mycallback); //standard
+  } else if (window.attachEvent) {
+      attachEvent("onload", mycallback); //IE
+  } else { //fallback method
+      var oldCb = onload;
+      onload = function() {
+      if (oldCb) oldCb();
+      mycallback();
+      };
+  }
+  })();
+
+  function setupStopCanvasFromRenamingLTIContainers() {
+
+      if (assignments == 'assignments' && edit == 'edit') {
+
+          if (document.getElementById("assignment_external_tool_tag_attributes_url_find")){
+
+              //External tool button id=assignment_external_tool_tag_attributes_url_find
+              var ExternalToolButton = document.getElementById("assignment_external_tool_tag_attributes_url_find")
+              ExternalToolButton.addEventListener('click', visibilityObserverLauncher);
+
+              function visibilityObserverLauncher() {
+                  //console.log("visibilityObserverLauncher initialized")
+                  //const preInnerLTI = document.getElementById("select_context_content_dialog")
+                  //console.log(window.getComputedStyle(preInnerLTI))
+                  //console.log("0 The calculated current style.display is " + window.getComputedStyle(preInnerLTI).display)
+                  visibilityObserver();
+                  //ExternalToolButton.removeEventListener('click', visibilityObserverLauncher);
+              }
+
+
+              function visibilityObserver() {
+
+                  const innerLTI = document.getElementById("select_context_content_dialog");
+                  
+                  const lessonTitle = document.querySelector('#assignment_name');
+                  //console.log("lessonTitle = " + lessonTitle)
+                  var originalLessonTitle = lessonTitle.value;
+                  //console.log("originalLessonTitle = " + originalLessonTitle)
+
+                  /*setTimeout(function() {
+                  var selectButtonForLTIWindow = document.querySelectorAll('.add_item_button.btn.btn-primary.ui-button.ui-widget.ui-state-default.ui-corner-all.ui-button-text-only')[0];
+                  selectButtonForLTIWindow.addEventListener('click', checkForLTITitleChanges);
+                  }, 2000);*/
+
+                  function checkForLTITitleChanges() {
+                    //console.log("Checking for title changes")
+                    var newLessonTitle = document.querySelector('#assignment_name').value;
+                    if (originalLessonTitle !== newLessonTitle){
+                      //console.log("Canvas changed the lesson title to = " + newLessonTitle)
+                      //console.log("Changing lesson title back to original = " + originalLessonTitle)
+                      newLessonTitle = originalLessonTitle;
+                      //console.log("newLessonTitle is now = " + newLessonTitle)
+                      //document.querySelector('#assignment_name').value = originalLessonTitle;
+                      //console.log("document.querySelector('#assignment_name').value = " + newLessonTitle)
+                      //console.log("after click, originalLessonTitle = " + originalLessonTitle);
+                      document.querySelector('#assignment_name').value = originalLessonTitle;
+                      //console.log("Maybe now we have the original lesson title? = " + originalLessonTitle);
+                      //console.log("#assignment_name = " + document.querySelector('#assignment_name').value);
+                    }
+                  }
+                  //let display = innerLTI.style.display
+                  //let currentStyle = innerLTI.style.display;
+                  //var currentStyle = innerLTI.style.display;
+                  //console.log("Initial current style.display is " + currentStyle)
+                  //innerLTI.style.display is unreliable bc it only checks inline styles.
+                  //we need to use window.getComputedStyle(innerLTI).display for best accuracy
+
+                  //var calculatedCurrentStyle = window.getComputedStyle(innerLTI).display;
+                  //console.log("1 The calculated current style.display is " + window.getComputedStyle(innerLTI).display)
+
+                  // Callback function when changes occurs
+                  function callback(mutationRecord, observer) {
+                      //console.log("We're in the mutation observer now")
+                      //console.log("Current style.display is now: " + currentStyle)
+                      //console.log("2 The calculated current style.display is " + window.getComputedStyle(innerLTI).display)
+
+                      //var newTop = innerLTI.parentElement.offsetTop - 100; //50
+                      //parseInt(newTop)
+                      //console.log(newTop)
+
+                      //var LTIContainer = document.querySelectorAll(".ui-dialog.ui-widget.ui-widget-content.ui-corner-all.ui-draggable.ui-resizable.ui-dialog-buttons")[0];
+                      //LTIContainer.style.width = '80%';
+                      //LTIContainer.style.left = '10%';
+                      //LTIContainer.style.top = newTop + 'px';
+                      //innerLTI.style.height = '370px';
+
+                      var selectButtonForLTIWindow = document.querySelectorAll('.add_item_button.btn.btn-primary.ui-button.ui-widget.ui-state-default.ui-corner-all.ui-button-text-only')[0];
+                      selectButtonForLTIWindow.addEventListener('click', checkForLTITitleChanges);
+
+
+
+
+
+
+                      //console.log("observe is... " + observer)
+                      observer.disconnect();
+                      //console.log("after disconnect, observer is now " + observer)
+                      //console.log("3 The calculated current style.display is " + window.getComputedStyle(innerLTI).display)
+                  }
+
+                  // Create a new instance of MutationObserver with callback in params
+                  const observer = new MutationObserver(callback);
+
+                  // Setup config
+                  const config = {
+                    attributeFilter: ["style"]
+                  };
+
+                  // When everything is ready, we just observe our target (innerLTI)
+                  observer.observe(innerLTI, config);
+
+                  //console.log("After the observer, style.display is " + currentStyle)
+                  //console.log("4 The calculated current style.display is " + window.getComputedStyle(innerLTI).display)
+
+              }
+          }
+
+
+      }
+  }
+}
+
   function addAwardFullPointsAndNext() {
     if (isSG && typeof config.awardFullPointsAndNext !== 'undefined' && config.awardFullPointsAndNext) {
       var gradingBox = document.querySelector('input#grading-box-extended');
@@ -2577,6 +3476,18 @@ function adjustExternalToolBox() {
         console.log('Assignment Value is not a number');
       }
 
+      // Get the functions from addSgStudentNameGreeting
+      const { launchShortCodeReplacementFunctions, replaceSgStudentNameShortCode, replaceSgLessonNameShortCode } = addSgStudentNameGreeting();
+
+      // Call the function to execute launchShortCodeReplacementFunctions
+      // TODO: This might be not be necessary here, consider removing. - DWS
+      launchShortCodeReplacementFunctions();
+
+      // Use replaceSgStudentNameShortCode here - This seems redundant, consider removing - TODO - DWS.
+      replaceSgStudentNameShortCode();
+      // Use replaceSgLessonNameShortCode here - This seems redundant, consider removing - TODO - DWS.
+      replaceSgLessonNameShortCode();
+
       advanceUser = true;
       advanceSrc = 'grade';
       gradingBox.dispatchEvent(new Event('change', {
@@ -2593,7 +3504,17 @@ function adjustExternalToolBox() {
           'bubbles' : true
         }));
       }
-      nextUser();
+      
+      // We actually can't use a Promise here unless the launchShortCodeReplacementFunctions() function 
+      // is available. The updated code makes this now possible. - DWS
+      // Use a Promise to ensure launchShortCodeReplacementFunctions completes before nextUser
+      // TODO: This might be redundant, consider removing. - DWS
+      new Promise((resolve) => {
+        launchShortCodeReplacementFunctions();
+        resolve();
+      }).then(() => {
+          nextUser();
+      });
     }
   }
 
@@ -2757,6 +3678,26 @@ function addCustomCSS() {
       min-height: 600px !important;
     }
 
+    .RceHtmlEditor > div { /* New Canvas Code Editor */
+      min-height: 600px !important;
+    }
+
+    .cm-editor { /* New Canvas Code Editor */
+      background-color: rgb(245, 245, 245) !important;
+    }
+
+    .cm-editor:hover { /* New Canvas Code Editor */
+      cursor: auto !important;
+    }
+
+    .cm-gutters { /* New Canvas Code Editor */
+      background-color: rgb(240, 240, 240) !important;
+    }
+
+    #quiz_edit_wrapper #options_tab { /* Due to the New Canvas Code Editor */
+      overflow-x: unset !important;
+    }
+
     .CodeMirror.cm-s-default.CodeMirror-wrap {
       min-height: 600px !important;
     }
@@ -2784,7 +3725,7 @@ function addCustomCSS() {
   .emoji-picker-container {
     display: none !important;
   }
-  
+
   #emoji-quick-picker-container {
     display: none !important;
   }`;
