@@ -16,6 +16,13 @@ Over the years, this code has slowly become unruly and it has turned into a hot 
 
 Cheers and happy Canvas-ing!
 
+## Upcoming Scripts
+### The Waybetter Gradebook
+A new way to view individual student grades with a number of new features.
+
+### Download Canvas Rubric Data
+Finally, for an assignment with a rubric, a way to download the rubric data of all students into one spreadsheet.
+
 ## Release Notes
 ### [palcs-ui.user.js](https://github.com/dslusser/PalcsUI-Canvancement/raw/master/install/palcs-ui.user.js) - Version 5.3.00.00
 - Bug fixes and updates to address issues that popped up when Canvas updated the comment box on the SpeedGrader
