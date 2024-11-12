@@ -19,12 +19,12 @@ Cheers and happy Canvas-ing!
 ## Release Notes
 ### [palcs-ui.user.js](https://github.com/dslusser/PalcsUI-Canvancement/raw/master/install/palcs-ui.user.js) - Version 5.3.00.00
 - Bug fixes and updates to address issues that popped up when Canvas updated the comment box on the SpeedGrader
--- The StudentName and LessonName replacement short code logic has been rewritten
--- Fixes for the broken advance buttons
--- SpeedGrader styling enhancements for the new RCE comment box
+  - The StudentName and LessonName replacement short code logic has been rewritten
+  - Fixes for the broken advance buttons
+  - SpeedGrader styling enhancements for the new RCE comment box
 - Some adjustments to how the "Save and move to next student" buttons function 
--- Added the ability to save grades and comments when clicked
+  - Added the ability to save grades and comments when clicked
 - Added a new function to stop canvas from renaming LTI lesson titles when an external tool is used as an assignment submission
--- Just...why? 😩
+  - Just...why? 😩
 - Added some new readability styling for the updated HTML editor
 - Added some functionality styling for the updated HTML editor 
