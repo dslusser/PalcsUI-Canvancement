@@ -14,7 +14,7 @@ A separate space for release notes, both structured and unstructured.
 - Added some new readability styling for the updated HTML editor
 - Added some functionality styling for the updated HTML editor 
 
-### [the-waybetter-gradebook-standalone-beta-offline.user.js](https:github.com/dslusser/PalcsUI-Canvancement/raw/master/install/the-waybetter-gradebook-standalone-beta-offline.user.js) - Version 2.11.44
+### [the-waybetter-gradebook-standalone-beta.user.js](https:github.com/dslusser/PalcsUI-Canvancement/raw/master/install/the-waybetter-gradebook-standalone-beta.user.js) - Version 2.11.44
 - v2.11.27:
   - updated the code to use clearSubmissionsTableTBody() instead of clearSubmissionsTable()
     - looking at using fadeOutAndInElement() to fade in and out the submissionsTableTBody for the next release
@@ -172,6 +172,6 @@ A separate space for release notes, both structured and unstructured.
       - anything else that makes the UI/UX feel better
     - Move or duplicate the "Calculate based only on submitted assignments" checkbox to top???
     -- Move or duplicate the Reset Changes button to top???
-    
+
   - GOALS for v2.11.47:
     - Make the sticky submissions table header prettier
