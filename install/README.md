@@ -18,7 +18,21 @@ Cheers and happy Canvas-ing!
 
 ## Upcoming Scripts
 ### The Waybetter Gradebook
-A new way to view individual student grades with a number of new features.
+Beta version released! This script adds new functionality to the individual student view of the gradebook. One way that this view is accessed by going to a course, clicking on People from the course navigation, then clicking on a student. In the popover drawer, click on the Grades button. The URL looks similar to this structure: https://[MyInstitution].instructure.com/courses/[CourseID]/grades/[StudentID].
+
+On this page, a button with a title of "Enable The Waybetter Gradebook" is automatically created. Click on the button to enable The Waybetter Gradebook. Once enabled, a default time frame of assignments from the current marking period will load. These time frames are defined in the code (and will need to be manually updated each school year).
+
+On the Waybetter Gradebook tab, the assignments and submissions are loaded with various information such as due date time (and progress check), submission time (and indicator of On Time, Late, Missing, Excused, or Manual Entry), a submission status, points earned, points available, SpeedGrader Link, and an Include checkbox that can be used to include/exclude an assignment from the totals calculations.
+
+The Waybetter Gradebook also acts as a What-If calculator. So if you wanted to test out a grade of an assignment for a student, you can modify the grade by clicking on the points earned value. It is important to note that this DOES NOT actually modify the grade of the submission; this is essentially a giant calculator. You can reset changes by the button at the bottom, or refresh the page to return all values to their original numbers.
+
+The Student Insights tab displays some preliminary data analysis of the currently selected time frame. This tab is still being built out and more data will eventually be added in the future.
+
+There is also a Message Student button created on the right side of the page that upon click, should open a new tab that sets up a Canvas Message page to quickly send a message to the student.
+
+On the right hand side are some advanced settings for the Waybetter Gradebook. "Normalize Assignment Groups to 100%" will take account of the groups and weights of the currently selected time frame. If there are weighted assignment groups present in the course, but no assignments are loaded from that group for the selected time frame, then the normalize Assignment Groups to 100% setting will normalize the currently weighted assignment groups to 100%. Turn this setting off if you want to see the calculations without the normalization. 
+
+The setting for "Automatically Select Past Due Assignments Only" does as it is so named. Upon loading of the time frame, it will only select assignments that are past due (and not excused). Turn this setting off to perform the calculations on all assignments.
 
 ### Download Canvas Rubric Data
 Finally, for an assignment with a rubric, a way to download the rubric data of all students into one spreadsheet.
