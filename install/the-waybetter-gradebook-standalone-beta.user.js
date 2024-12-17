@@ -5,7 +5,7 @@
 // @description   User enhancements for the individual Canvas gradebook page
 // @match         https://*.instructure.com/courses/*/grades/*
 // @noframes
-// @version       2.11.44
+// @version       2.11.45
 // @grant         none
 // @updateURL     https://github.com/dslusser/PalcsUI-Canvancement/raw/master/install/the-waybetter-gradebook-standalone-beta.user.js
 // @downloadURL   https://github.com/dslusser/PalcsUI-Canvancement/raw/master/install/the-waybetter-gradebook-standalone-beta.user.js
@@ -26,22 +26,22 @@
 
     // The Waybetter Gradebook
     // Branch v2.3.02
-    // Version v2.11.44
+    // Version v2.11.45
     // Workspace the_waybetter_gradebook_5.code-workspace
     //
-    // v2.11.44 OFFICIAL BETA RELEASE AT THIS POINT
-    //
-    //
+    // v2.11.45 OFFICIAL BETA RELEASE AT THIS POINT
+    // 
+    // 
     // GOALS:
-    //
-    //
-    // CURRENT ISSUES: 
-    //
-    //
+    // 
+    // 
+    // CURRENT ISSUES:
+    // 
+    // 
     // TODO:
-    //
-    //
-    // RELEASE NOTES:   
+    // 
+    // 
+    // RELEASE NOTES:
     // 
 
     function initializeWaybetterGradebook() {
@@ -2137,7 +2137,9 @@
 
                 // Determine the adjusted submission status
                 let adjustedSubmissionStatus = "";
-                if (submission.score === null && submission.workflow_state === 'graded') {
+                if (submission.workflow_state === 'pending_review') {
+                    adjustedSubmissionStatus = "Awaiting Grading";
+                } else if (submission.score === null && submission.workflow_state === 'graded') {
                     if (!submission.submitted_at) {
                         adjustedSubmissionStatus = "Unsubmitted";
                     } else {
@@ -2192,6 +2194,11 @@
                 // Determine if the assignment is past due
                 const isPastDue = dueAt < currentDate;
 
+                // Determine the display text for workflow state
+                const workflowStateDisplay = submission.workflow_state === 'pending_review' 
+                ? 'Pending Review'
+                : capitalizeFirstLetter(submission.workflow_state);
+
                 row.innerHTML = `
                   <td>
                     <a href="${assignment.html_url}">${assignment.name}</a>
@@ -2211,7 +2218,7 @@
                     </span>
                   </td>
                   <td>
-                    <span data-graded-workflow-state="${submission.workflow_state}">${capitalizeFirstLetter(submission.workflow_state)}</span>
+                    <span data-graded-workflow-state="${submission.workflow_state}">${workflowStateDisplay}</span>
                     ${showAdjustedStatus ? `
                     <br>
                     <span data-adjusted-submission-status="${adjustedSubmissionStatus}" style="font-size: smaller; font-style: italic;">

@@ -118,6 +118,16 @@ A separate space for release notes, both structured and unstructured.
   - Fixed a few minor issues with the submissions table. data-* attributes are now 
     - being updated dynamically and correctly.
 
+- v2.11.44:
+  - Add a new function to calculate like the SIS Weighted Score calculation (DONE-ISH)
+    - There is now a new function called sisWeightedScore() that is being called in the 
+    - recalculateTotalsNormalizedTo100Percent() function. This can provide a framework
+    - but it's still in the very early stages and needs more work.
+  
+- v2.11.45:  
+  - Small update for a submission workflow status of pending_review
+    - Updated display to Pending Review and the status to Awaiting Grading
+
 - #### TODO:
 - Consider using the Canvas Inbox API/xhr request to send a message to the student directly from the page
 - Ease in and out:
@@ -157,8 +167,12 @@ A separate space for release notes, both structured and unstructured.
       - There is now a new function called sisWeightedScore() that is being called in the 
       - recalculateTotalsNormalizedTo100Percent() function. This can provide a framework
       - but it's still in the very early stages and needs more work.
+    
+  - GOALS for v2.11.45  
+    - Update submission workflow status of pending_review (DONE)
+      - Change display to Pending Review and status to Awaiting Grading
 
-  - GOALS for v2.11.45:
+  - GOALS for v2.11.46:
     - Add more Student Insights data
       - Also add more completed sentences for Student Insights data
       - Unsubmitted status with Points Earned EX should not be counted 
@@ -166,12 +180,12 @@ A separate space for release notes, both structured and unstructured.
       - Will we need to add more data-* attributes to the assignments to handle this???
       - Some have been added. Do we need to add more?
 
-  - GOALS for v2.11.46:
+  - GOALS for v2.11.47:
     - Ease in and out:
       - The "Assignments are weighted by group table" and/or contents in the table???
       - anything else that makes the UI/UX feel better
     - Move or duplicate the "Calculate based only on submitted assignments" checkbox to top???
     -- Move or duplicate the Reset Changes button to top???
 
-  - GOALS for v2.11.47:
+  - GOALS for v2.11.48:
     - Make the sticky submissions table header prettier
