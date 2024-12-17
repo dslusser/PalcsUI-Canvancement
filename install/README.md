@@ -49,3 +49,5 @@ Finally, for an assignment with a rubric, a way to download the rubric data of a
   - Just...why? 😩
 - Added some new readability styling for the updated HTML editor
 - Added some functionality styling for the updated HTML editor 
+
+### See [Release Notes](Release%20Notes.md) for additional information on the releases
