@@ -7,7 +7,7 @@
 // @match         https://*.instructure.com/courses/*/quizzes/*/history?*
 // @match         https://*.instructure.com/*
 // @noframes
-// @version       5.3.00.01
+// @version       5.3.01.00
 // @grant         none
 // @updateURL     https://github.com/dslusser/PalcsUI-Canvancement/raw/master/install/palcs-ui-standalone.user.js
 // @downloadURL   https://github.com/dslusser/PalcsUI-Canvancement/raw/master/install/palcs-ui-standalone.user.js
@@ -2118,7 +2118,7 @@
 
     // Loop through the studentAssignment elements, adding the SpeedGrader submission links to each assignment instance
     for (var i=0; i<studentAssignment.length; i++) {
-        if (studentAssignment[i].firstElementChild.firstElementChild !== null){
+        if (studentAssignment[i].firstElementChild && studentAssignment[i].firstElementChild.firstElementChild !== null){
             //console.log('element exists ' + studentAssignment[i].firstElementChild.firstElementChild.href);
             //console.log('details ' + studentAssignment[i].lastElementChild);
 
@@ -2494,7 +2494,7 @@ function addSgStudentNameGreeting() {
             function handleUrlChange() {
                 const newStudentId = new URL(window.location.href).searchParams.get('student_id');
                 if (newStudentId !== lastStudentId) {
-                    //console.log(`student_id changed to ${newStudentId}`);
+                    console.log(`student_id changed to ${newStudentId}`);
                     lastStudentId = newStudentId;
 
                     // Reattach event listeners after a delay
@@ -2550,7 +2550,7 @@ function addSgStudentNameGreeting() {
 
             // Function to handle the click event on the comment divs
             function handleCommentDivClick() {
-              //console.log('Comment div clicked, triggering shortcode replacement.');
+              console.log('Comment div clicked, triggering shortcode replacement.');
 
               // Call your function with a 100ms delay when any of the divs are clicked
               setTimeout(function() {
@@ -2558,7 +2558,7 @@ function addSgStudentNameGreeting() {
               }, 500);
 
               // Since the DOM might be destroyed and recreated, re-run the setup
-              //console.log('Re-running setup to handle DOM recreation.');
+              console.log('Re-running setup to handle DOM recreation.');
               setTimeout(initializeEventListeners, 500);  // Delay to allow DOM to be recreated before reattaching listeners
             }
 
@@ -2570,7 +2570,7 @@ function addSgStudentNameGreeting() {
               // Add a click event listener to the button to open the drawer
               if (commentLibraryButton) {
                   commentLibraryButton.addEventListener('click', function() {
-                      //console.log('Comment library button clicked, adding event listeners to comment divs.');
+                      console.log('Comment library button clicked, adding event listeners to comment divs.');
 
                       // Wait for the drawer to open, then add listeners to the comment divs
                       setTimeout(function() {
@@ -2584,7 +2584,7 @@ function addSgStudentNameGreeting() {
 
             // Function to initialize event listeners for both button and comment divs
             function initializeEventListeners() {
-              //console.log('Initializing event listeners.');
+              console.log('Initializing event listeners.');
               
               // Add event listener to the button
               addCommentLibraryButtonListener();
@@ -2602,7 +2602,7 @@ function addSgStudentNameGreeting() {
             }
 
             // Initial setup when the DOM is loaded
-            //console.log('DOM loaded, setting up event listeners.');
+            console.log('DOM loaded, setting up event listeners.');
             initializeEventListeners();
 
             // Start observing URL changes
@@ -2720,7 +2720,7 @@ function addSgStudentNameGreeting() {
             function handleUrlChange() {
                 const newStudentId = new URL(window.location.href).searchParams.get('student_id');
                 if (newStudentId !== lastStudentId) {
-                    //console.log(`student_id changed to ${newStudentId}`);
+                    console.log(`student_id changed to ${newStudentId}`);
                     lastStudentId = newStudentId;
 
                     // Reattach event listeners after a delay
@@ -2776,7 +2776,7 @@ function addSgStudentNameGreeting() {
 
             // Function to handle the click event on the comment divs
             function handleCommentDivClick() {
-              //console.log('Comment div clicked, triggering shortcode replacement.');
+              console.log('Comment div clicked, triggering shortcode replacement.');
 
               // Call your function with a 100ms delay when any of the divs are clicked
               setTimeout(function() {
@@ -2784,7 +2784,7 @@ function addSgStudentNameGreeting() {
               }, 500);
 
               // Since the DOM might be destroyed and recreated, re-run the setup
-              //console.log('Re-running setup to handle DOM recreation.');
+              console.log('Re-running setup to handle DOM recreation.');
               setTimeout(initializeEventListeners, 500);  // Delay to allow DOM to be recreated before reattaching listeners
             }
 
@@ -2796,7 +2796,7 @@ function addSgStudentNameGreeting() {
               // Add a click event listener to the button to open the drawer
               if (commentLibraryButton) {
                   commentLibraryButton.addEventListener('click', function() {
-                      //console.log('Comment library button clicked, adding event listeners to comment divs.');
+                      console.log('Comment library button clicked, adding event listeners to comment divs.');
 
                       // Wait for the drawer to open, then add listeners to the comment divs
                       setTimeout(function() {
@@ -2810,7 +2810,7 @@ function addSgStudentNameGreeting() {
 
             // Function to initialize event listeners for both button and comment divs
             function initializeEventListeners() {
-              //console.log('Initializing event listeners.');
+              console.log('Initializing event listeners.');
               
               // Add event listener to the button
               addCommentLibraryButtonListener();
@@ -2834,7 +2834,7 @@ function addSgStudentNameGreeting() {
             //}
 
             // Initial setup when the DOM is loaded
-            //console.log('DOM loaded, setting up event listeners.');
+            console.log('DOM loaded, setting up event listeners.');
             initializeEventListeners();
 
             // Start observing URL changes
@@ -3149,7 +3149,7 @@ function addSgStudentNameGreeting() {
               replaceSgStudentNameShortCode(),
               replaceSgLessonNameShortCode()
           ]).then(() => {
-              //console.log('replaceSgStudentNameShortCode() and replaceSgLessonNameShortCode() promise resolved. The REAL launchShortCodeReplacementFunctions() launched properly.');
+              console.log('replaceSgStudentNameShortCode() and replaceSgLessonNameShortCode() promise resolved. The REAL launchShortCodeReplacementFunctions() launched properly.');
               resolve();
           }).catch((error) => {
               console.error("Error in shortcode replacement:", error);
@@ -3158,7 +3158,7 @@ function addSgStudentNameGreeting() {
       } else {
           resolve();
       }
-      //console.log('The REAL launchShortCodeReplacementFunctions() launched');
+      console.log('The REAL launchShortCodeReplacementFunctions() launched');
     });
   }
 

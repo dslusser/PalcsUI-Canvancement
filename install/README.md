@@ -38,16 +38,20 @@ The setting for "Automatically Select Past Due Assignments Only" does as it is s
 Finally, for an assignment with a rubric, a way to download the rubric data of all students into one spreadsheet.
 
 ## Release Notes
-### [palcs-ui.user.js](https://github.com/dslusser/PalcsUI-Canvancement/raw/master/install/palcs-ui.user.js) - Version 5.3.00.01
-- Bug fixes and updates to address issues that popped up when Canvas updated the comment box on the SpeedGrader
-  - The StudentName and LessonName replacement short code logic has been rewritten
-  - Fixes for the broken advance buttons
-  - SpeedGrader styling enhancements for the new RCE comment box
-- Some adjustments to how the "Save and move to next student" buttons function 
-  - Added the ability to save grades and comments when clicked
-- Added a new function to stop canvas from renaming LTI lesson titles when an external tool is used as an assignment submission
-  - Just...why? 😩
-- Added some new readability styling for the updated HTML editor
-- Added some functionality styling for the updated HTML editor 
+### [palcs-ui.user.js](https://github.com/dslusser/PalcsUI-Canvancement/raw/master/install/palcs-ui.user.js) 
+- v5.3.00.01
+  - Bug fixes and updates to address issues that popped up when Canvas updated the comment box on the SpeedGrader
+    - The StudentName and LessonName replacement short code logic has been rewritten
+    - Fixes for the broken advance buttons
+    - SpeedGrader styling enhancements for the new RCE comment box
+  - Some adjustments to how the "Save and move to next student" buttons function 
+    - Added the ability to save grades and comments when clicked
+  - Added a new function to stop canvas from renaming LTI lesson titles when an external tool is used as an assignment submission
+    - Just...why? 😩
+  - Added some new readability styling for the updated HTML editor
+  - Added some functionality styling for the updated HTML editor
+
+- v5.3.01.00
+  - Fixed a small issue with the add SpeedGrader Links function in rare cases when certain objects were null
 
 ### See [Release Notes](Release%20Notes.md) for additional information on the releases

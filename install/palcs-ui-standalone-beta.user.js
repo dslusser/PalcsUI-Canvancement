@@ -7,7 +7,7 @@
 // @match         https://*.instructure.com/courses/*/quizzes/*/history?*
 // @match         https://*.instructure.com/*
 // @noframes
-// @version       5.3.00.01
+// @version       5.3.01.00
 // @grant         none
 // @updateURL     https://github.com/dslusser/PalcsUI-Canvancement/raw/master/install/palcs-ui-standalone-beta.user.js
 // @downloadURL   https://github.com/dslusser/PalcsUI-Canvancement/raw/master/install/palcs-ui-standalone-beta.user.js
@@ -2118,7 +2118,7 @@
 
     // Loop through the studentAssignment elements, adding the SpeedGrader submission links to each assignment instance
     for (var i=0; i<studentAssignment.length; i++) {
-        if (studentAssignment[i].firstElementChild.firstElementChild !== null){
+        if (studentAssignment[i].firstElementChild && studentAssignment[i].firstElementChild.firstElementChild !== null){
             //console.log('element exists ' + studentAssignment[i].firstElementChild.firstElementChild.href);
             //console.log('details ' + studentAssignment[i].lastElementChild);
 
