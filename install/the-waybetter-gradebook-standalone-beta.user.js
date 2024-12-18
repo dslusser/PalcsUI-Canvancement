@@ -1,11 +1,11 @@
 // ==UserScript==
-// @name          The Waybetter Gradebook : Standalone : BETA : OFFLINE
+// @name          The Waybetter Gradebook : Standalone : BETA
 // @author        Dan Slusser
 // @namespace     https://github.com/dslusser/PalcsUI-Canvancement
 // @description   User enhancements for the individual Canvas gradebook page
 // @match         https://*.instructure.com/courses/*/grades/*
 // @noframes
-// @version       2.11.47
+// @version       2.11.48
 // @grant         none
 // @updateURL     https://github.com/dslusser/PalcsUI-Canvancement/raw/master/install/the-waybetter-gradebook-standalone-beta.user.js
 // @downloadURL   https://github.com/dslusser/PalcsUI-Canvancement/raw/master/install/the-waybetter-gradebook-standalone-beta.user.js
@@ -26,10 +26,10 @@
 
     // The Waybetter Gradebook
     // Branch v2.3.02
-    // Version v2.11.47
+    // Version v2.11.48
     // Workspace the_waybetter_gradebook_5.code-workspace
     //
-    // v2.11.47 OFFICIAL BETA RELEASE AT THIS POINT
+    // v2.11.48 OFFICIAL BETA RELEASE AT THIS POINT
     // 
     // 
     // GOALS:
