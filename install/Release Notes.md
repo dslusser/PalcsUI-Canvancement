@@ -128,6 +128,9 @@ A separate space for release notes, both structured and unstructured.
   - Small update for a submission workflow status of pending_review
     - Updated display to Pending Review and the status to Awaiting Grading
 
+- v2.11.46:
+  - Updates to various functions to account for when a course does not have weighted assignments
+
 - #### TODO:
 - Consider using the Canvas Inbox API/xhr request to send a message to the student directly from the page
 - Ease in and out:
@@ -158,7 +161,7 @@ A separate space for release notes, both structured and unstructured.
     - Our SIS display seems to round to the nearest hundredth of a percent in some places, but not in other places
       - and not at certain times. This can be tricky to mirror because I don't know which display to use and when to mirror it.
     - Waybetter Gradebook calculations handle things slightly differently. I've added additional logging to monitor and compare
-      - our SIS calculations vs Waybetter Gradebook. 
+      - our SIS calculations vs Waybetter Gradebook. Perhaps this could be included as a SIS Weighted Score column in the future.
       - I'd love to get full parity here, but I haven't yet figured out an elegant way of doing so.
 
 - #### GOALS:
@@ -172,7 +175,10 @@ A separate space for release notes, both structured and unstructured.
     - Update submission workflow status of pending_review (DONE)
       - Change display to Pending Review and status to Awaiting Grading
 
-  - GOALS for v2.11.46:
+  - GOALS for v2.11.46
+    - Update various functions to account for when a course does not have weighted assignments
+
+  - GOALS for v2.11.47:
     - Add more Student Insights data
       - Also add more completed sentences for Student Insights data
       - Unsubmitted status with Points Earned EX should not be counted 
@@ -180,12 +186,12 @@ A separate space for release notes, both structured and unstructured.
       - Will we need to add more data-* attributes to the assignments to handle this???
       - Some have been added. Do we need to add more?
 
-  - GOALS for v2.11.47:
+  - GOALS for v2.11.48:
     - Ease in and out:
       - The "Assignments are weighted by group table" and/or contents in the table???
       - anything else that makes the UI/UX feel better
     - Move or duplicate the "Calculate based only on submitted assignments" checkbox to top???
     -- Move or duplicate the Reset Changes button to top???
 
-  - GOALS for v2.11.48:
+  - GOALS for v2.11.49:
     - Make the sticky submissions table header prettier
