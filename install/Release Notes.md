@@ -131,6 +131,10 @@ A separate space for release notes, both structured and unstructured.
 - v2.11.46:
   - Updates to various functions to account for when a course does not have weighted assignments
 
+- v2.11.47:
+  - Actual updates to various functions to account for when a course does not have weighted assignments
+    - (I forgot to actually include the updated code, doh!)
+
 - #### TODO:
 - Consider using the Canvas Inbox API/xhr request to send a message to the student directly from the page
 - Ease in and out:
@@ -178,7 +182,11 @@ A separate space for release notes, both structured and unstructured.
   - GOALS for v2.11.46
     - Update various functions to account for when a course does not have weighted assignments
 
-  - GOALS for v2.11.47:
+  - GOALS for v2.11.47
+    - Actual updates for various functions to account for when a course does not have weighted assignments
+    - (I forgot to actually include the updated code, doh!)
+
+  - GOALS for v2.11.48:
     - Add more Student Insights data
       - Also add more completed sentences for Student Insights data
       - Unsubmitted status with Points Earned EX should not be counted 
@@ -186,12 +194,12 @@ A separate space for release notes, both structured and unstructured.
       - Will we need to add more data-* attributes to the assignments to handle this???
       - Some have been added. Do we need to add more?
 
-  - GOALS for v2.11.48:
+  - GOALS for v2.11.49:
     - Ease in and out:
       - The "Assignments are weighted by group table" and/or contents in the table???
       - anything else that makes the UI/UX feel better
     - Move or duplicate the "Calculate based only on submitted assignments" checkbox to top???
     -- Move or duplicate the Reset Changes button to top???
 
-  - GOALS for v2.11.49:
+  - GOALS for v2.11.50:
     - Make the sticky submissions table header prettier

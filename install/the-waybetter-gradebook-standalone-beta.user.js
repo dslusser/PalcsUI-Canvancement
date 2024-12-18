@@ -1,11 +1,11 @@
 // ==UserScript==
-// @name          The Waybetter Gradebook : Standalone : BETA
+// @name          The Waybetter Gradebook : Standalone : BETA : OFFLINE
 // @author        Dan Slusser
 // @namespace     https://github.com/dslusser/PalcsUI-Canvancement
 // @description   User enhancements for the individual Canvas gradebook page
 // @match         https://*.instructure.com/courses/*/grades/*
 // @noframes
-// @version       2.11.46
+// @version       2.11.47
 // @grant         none
 // @updateURL     https://github.com/dslusser/PalcsUI-Canvancement/raw/master/install/the-waybetter-gradebook-standalone-beta.user.js
 // @downloadURL   https://github.com/dslusser/PalcsUI-Canvancement/raw/master/install/the-waybetter-gradebook-standalone-beta.user.js
@@ -26,10 +26,10 @@
 
     // The Waybetter Gradebook
     // Branch v2.3.02
-    // Version v2.11.46
+    // Version v2.11.47
     // Workspace the_waybetter_gradebook_5.code-workspace
     //
-    // v2.11.46 OFFICIAL BETA RELEASE AT THIS POINT
+    // v2.11.47 OFFICIAL BETA RELEASE AT THIS POINT
     // 
     // 
     // GOALS:
@@ -57,6 +57,7 @@
       const baseUrl = ENV.DEEP_LINKING_POST_MESSAGE_ORIGIN;
       const apiUrl = `${baseUrl}/api/v1`;
       const enrollmentsApiUrl = `${apiUrl}/courses/${courseId}/enrollments?per_page=100&type[]=StudentEnrollment`;
+      const groupWeightingScheme = ENV.group_weighting_scheme;
       
       // Time Frames
       // Custom Time Frames
@@ -232,16 +233,29 @@
 
       // Check if the element exists to avoid errors
       if (assignmentsGroupTableElement) {
-          const only_consider_graded_assignments_wrapperElement = document.getElementById('only_consider_graded_assignments_wrapper');
-          fadeOutElementLinear(only_consider_graded_assignments_wrapperElement);
-          // Set the innerText to the desired value
-          //assignmentsGroupTableElement.innerHTML = `<thead><tr><th scope="col">Group</th><th scope="col">Weight</th></tr></thead><tbody></tbody>`;
-          const newContent = `<thead><tr><th scope="col">Group</th><th scope="col">Weight</th></tr></thead><tbody></tbody>`;
-          fadeOutAndInElement(assignmentsGroupTableElement, newContent);
-          let assignmentsGroupTableBodyElement = document.querySelector("#assignments-not-weighted > div:nth-child(1) > table.summary > tbody");
-          console.log("early assignmentsGroupTableBodyElement: " + assignmentsGroupTableBodyElement);
+        const only_consider_graded_assignments_wrapperElement = document.getElementById('only_consider_graded_assignments_wrapper');
+        fadeOutElementLinear(only_consider_graded_assignments_wrapperElement);
+        const newContent = `<thead><tr><th scope="col">Group</th><th scope="col">Weight</th></tr></thead><tbody></tbody>`;
+        fadeOutAndInElement(assignmentsGroupTableElement, newContent);
+        let assignmentsGroupTableBodyElement = assignmentsGroupTableElement.querySelector('tbody');
+        console.log("early assignmentsGroupTableBodyElement: " + assignmentsGroupTableBodyElement);
       } else {
-          console.log("assignmentsGroupTableElement not found");
+        // Create the table and tbody if they don't exist
+        const newTable = document.createElement('table');
+        newTable.className = 'summary';
+        newTable.innerHTML = `<thead><tr><th scope="col">Group</th><th scope="col">Weight</th></tr></thead><tbody></tbody>`;
+        const only_consider_graded_assignments_wrapperElement = document.getElementById('only_consider_graded_assignments_wrapper');
+        fadeOutElementLinear(only_consider_graded_assignments_wrapperElement);
+        
+        // Append the new table to the appropriate parent element
+        const parentElement = document.querySelector("#assignments-not-weighted > div:nth-child(1)");
+        if (parentElement) {
+            parentElement.appendChild(newTable);
+            newTable.style.display = 'none';
+            console.log("New assignmentsGroupTableElement created and appended.");
+        } else {
+              console.log("Parent element for assignments table not found");
+          }
       }
 
       
@@ -677,6 +691,21 @@
     
         // Update the URL hash
         window.location.hash = hash;
+      }
+
+      function updateGroupWeightDisplay() {
+        //const groupWeightingScheme = ENV.group_weighting_scheme; // Assuming ENV is globally accessible
+        const groupWeightElements = document.querySelectorAll('.group-weight-percentage');
+    
+        if (groupWeightingScheme === "equal") {
+            groupWeightElements.forEach(element => {
+                element.style.display = 'none';
+            });
+        } else {
+            groupWeightElements.forEach(element => {
+                element.style.display = 'block';
+            });
+        }
       }
 
       function setupUI(submissions, assignmentGroups, enrollments) {
@@ -1453,7 +1482,13 @@
           const gradesNormalizedTo100PercentCheckbox = document.createElement('input');
           gradesNormalizedTo100PercentCheckbox.type = 'checkbox';
           gradesNormalizedTo100PercentCheckbox.id = 'gradesNormalizedTo100PercentCheckbox';
-          gradesNormalizedTo100PercentCheckbox.checked = true; // Default to checked now
+          //gradesNormalizedTo100PercentCheckbox.checked = true; // Default to checked now
+          // Default the checkbox to checked unless the group weighting scheme is "equal"
+          if (groupWeightingScheme !== "equal") {
+              gradesNormalizedTo100PercentCheckbox.checked = true;
+          } else {
+              gradesNormalizedTo100PercentCheckbox.checked = false;
+          }
           advancedSettingsCheckboxCell.appendChild(gradesNormalizedTo100PercentCheckbox);
 
           // Create a cell for the label
@@ -2320,7 +2355,7 @@
             row.setAttribute('data-group-id', groupId);
             row.setAttribute('data-group-name', group.name);
             row.setAttribute('data-group-weight', group.weight);
-            row.innerHTML = `<td data-group-name="${group.name}">${group.name} <span style="font-size: smaller;">(${group.weight}%)</span></td><td data-group-earned-points="${group.pointsEarned.toFixed(2)}">${group.pointsEarned.toFixed(2)}</td><td data-group-available-points="${group.pointsAvailable.toFixed(2)}">${group.pointsAvailable.toFixed(2)}</td><td data-group-earned-percent="${roundedPercentage.toFixed(2)}">${roundedPercentage.toFixed(2)}%</td><td colspan="3"></td>`;
+            row.innerHTML = `<td data-group-name="${group.name}">${group.name} <span style="font-size: smaller;" class="group-weight-percentage">(${group.weight}%)</span></td><td data-group-earned-points="${group.pointsEarned.toFixed(2)}">${group.pointsEarned.toFixed(2)}</td><td data-group-available-points="${group.pointsAvailable.toFixed(2)}">${group.pointsAvailable.toFixed(2)}</td><td data-group-earned-percent="${roundedPercentage.toFixed(2)}">${roundedPercentage.toFixed(2)}%</td><td colspan="3"></td>`;
             //submissionsTable.appendChild(row);
             submissionsTableTBody.appendChild(row);
           }
@@ -2346,7 +2381,7 @@
         const finalRow = document.createElement('tr');
         // Use "total" as the data-group-id attribute
         finalRow.setAttribute('data-group-id', "total");
-        finalRow.innerHTML = `<td>Total Earned Percentage <span id="totalWeightPercentageFinalRow" style="font-size: smaller;">(${totalWeight}%)</span></td><td colspan="5">${finalPercentage.toFixed(2)}%</td><td><button class="Button" id="resetButton">Reset Changes</button></td><td><label><input type="checkbox" id="calculateSubmittedOnly">&nbsp;Calculate based only on submitted assignments</label></td>`;
+        finalRow.innerHTML = `<td>Total Earned Percentage <span id="totalWeightPercentageFinalRow" style="font-size: smaller;" class="group-weight-percentage">(${totalWeight}%)</span></td><td colspan="5">${finalPercentage.toFixed(2)}%</td><td><button class="Button" id="resetButton">Reset Changes</button></td><td><label><input type="checkbox" id="calculateSubmittedOnly">&nbsp;Calculate based only on submitted assignments</label></td>`;
         //submissionsTable.appendChild(finalRow);
         submissionsTableTBody.appendChild(finalRow);
       
@@ -2628,14 +2663,25 @@
           studentInsightsDataTeaser(studentFirstNamefromEnrollments);
           console.log("studentInsightsDataTeaser() launched");
 
+          // Update the group weight display
+          updateGroupWeightDisplay();
+
           const gradesNormalizedTo100PercentCheckbox = document.getElementById('gradesNormalizedTo100PercentCheckbox');
           switch (gradesNormalizedTo100PercentCheckbox.checked) {
               case true:
                   recalculateTotalsNormalizedTo100Percent();
                   break;
               case false:
-                  recalculateTotalsDefault();
-                  break;
+                if (groupWeightingScheme === "equal") {
+                    recalculateTotalsEqualWeighting();
+                    console.log("groupWeightingScheme: ", groupWeightingScheme);
+                    console.log("recalculateTotalsEqualWeighting() launched");
+                } else {
+                    recalculateTotalsDefault();
+                    console.log("groupWeightingScheme: ", groupWeightingScheme);
+                    console.log("recalculateTotalsDefault() launched");
+                }
+                break;
           }
 
           function recalculateTotalsDefault() {
@@ -2880,6 +2926,79 @@
               }
               console.log("Normalized Total Percentage (totalWeightedPercentage.toFixed(2)): ", totalWeightedPercentage.toFixed(2));
               sisWeightedScore();
+          }
+
+          function recalculateTotalsEqualWeighting() {
+            console.log("recalculateTotalsEqualWeighting() launched");
+            // Reset totals for each group
+            Object.entries(groupTotals).forEach(([groupId, group]) => {
+                group.pointsEarned = 0;
+                group.pointsAvailable = 0;
+            });
+
+            document.querySelectorAll('.include-checkbox:checked').forEach(checkbox => {
+                const groupId = checkbox.getAttribute('data-group-id');
+                const assignmentId = checkbox.getAttribute('data-assignment-id');
+                const element = document.querySelector(`.points-earned-input[data-assignment-id="${assignmentId}"]`) || 
+                                document.querySelector(`.points-earned-clickable[data-assignment-id="${assignmentId}"]`);
+                const pointsPossible = parseFloat(checkbox.getAttribute('data-points-possible'));
+                let pointsEarned = 0;
+                if (element) {
+                    const updatedValue = element.getAttribute('data-updated-value');
+                    // Check if the updatedValue is "EX", treat it as 0 for calculation
+                    if (updatedValue === 'EX') {
+                        pointsEarned = 0;
+                    } else {
+                        // Ensure that "-" or invalid values are treated as 0
+                        pointsEarned = updatedValue && !isNaN(updatedValue) ? parseFloat(updatedValue) : parseFloat(element.getAttribute('data-original-value')) || 0;
+                    }
+                }
+                const group = groupTotals[groupId];
+                if (group) {
+                    group.pointsEarned += pointsEarned;
+                    group.pointsAvailable += pointsPossible;
+                }
+            });
+
+            console.log("Group Totals After Calculation: ", groupTotals);
+
+            // Calculate and update the UI for each group
+            Object.entries(groupTotals).forEach(([groupId, group]) => {
+                if (group.weight >= 0) { // Assuming you want to display weights for groups with a weight of zero or greater (aka. all groups)
+                    const percentage = group.pointsAvailable > 0 ? (group.pointsEarned / group.pointsAvailable) * 100 : 0;
+                    const groupRow = document.querySelector(`tr[data-group-id="${groupId}"]`);
+                    if (groupRow) {
+                        groupRow.cells[1].textContent = group.pointsEarned.toFixed(2);
+                        groupRow.cells[2].textContent = group.pointsAvailable.toFixed(2);
+                        groupRow.cells[3].textContent = `${percentage.toFixed(2)}%`;
+
+                        // Update data attributes
+                        groupRow.cells[1].setAttribute('data-group-earned-points', group.pointsEarned.toFixed(2));
+                        groupRow.cells[2].setAttribute('data-group-available-points', group.pointsAvailable.toFixed(2));
+                        groupRow.cells[3].setAttribute('data-group-earned-percent', percentage.toFixed(2));
+                    }
+                }
+            });
+
+            // Calculate the total earned percentage without considering group weights
+            const totalPointsEarned = Object.values(groupTotals).reduce((sum, group) => sum + group.pointsEarned, 0);
+            const totalPointsAvailable = Object.values(groupTotals).reduce((sum, group) => sum + group.pointsAvailable, 0);
+            const totalPercentage = totalPointsAvailable > 0 ? (totalPointsEarned / totalPointsAvailable) * 100 : 0;
+
+            const totalPercentageRow = document.querySelector('tr[data-group-id="total"]');
+            if (totalPercentageRow) {
+                totalPercentageRow.cells[1].innerHTML = `${totalPercentage.toFixed(2)}%<br><span style="font-size: smaller;">(${totalPointsEarned.toFixed(2)}/${totalPointsAvailable.toFixed(2)})</span>`;
+                console.log("Actual Total Percentage of totalPercentageRow: ", totalPercentage.toFixed(2));
+            } else {
+                console.log("No totalPercentageRow found.");
+            }
+
+            // Update the gradesDisplayElement on the Canvas page
+            if (gradesDisplayElement) {
+                gradesDisplayElement.innerText = `${totalPercentage.toFixed(2)}%`;
+            } else {
+                console.log("No gradesDisplayElement found.");
+            }
           }
         }
 
