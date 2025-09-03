@@ -5,7 +5,7 @@
 // @description   User enhancements for the individual Canvas gradebook page
 // @match         https://*.instructure.com/courses/*/grades/*
 // @noframes
-// @version       2.11.49
+// @version       2.11.50
 // @grant         none
 // @updateURL     https://github.com/dslusser/PalcsUI-Canvancement/raw/master/install/the-waybetter-gradebook-standalone-beta.user.js
 // @downloadURL   https://github.com/dslusser/PalcsUI-Canvancement/raw/master/install/the-waybetter-gradebook-standalone-beta.user.js
@@ -26,10 +26,10 @@
   
       // The Waybetter Gradebook
       // Branch v2.3.02
-      // Version v2.11.49
+      // Version v2.11.50
       // Workspace the_waybetter_gradebook_5.code-workspace
       //
-      // v2.11.49 OFFICIAL BETA RELEASE AT THIS POINT
+      // v2.11.50 OFFICIAL BETA RELEASE AT THIS POINT
       // 
       // 
       // GOALS:
@@ -65,76 +65,76 @@
         //const customEndTime = new Date('2024-05-01T23:59:59'); // End of custom time frame
   
         // Custom Time Frames
-        const customStartTime = new Date('2024-08-26T00:00:00'); // Start of custom time frame
-        const customEndTime = new Date('2025-06-13T23:59:59'); // End of custom time frame
+        const customStartTime = new Date('2025-08-25T00:00:00'); // Start of custom time frame
+        const customEndTime = new Date('2026-06-12T23:59:59'); // End of custom time frame
         
         // School Year Time Frames
-        const schoolYearStartTime = new Date('2024-08-26T00:00:00'); // Start of School Year time frame
-        const schoolYearEndTime = new Date('2025-06-13T23:59:59'); // End of School Year time frame
-  
+        const schoolYearStartTime = new Date('2025-08-25T00:00:00'); // Start of School Year time frame
+        const schoolYearEndTime = new Date('2026-06-12T23:59:59'); // End of School Year time frame
+
         // MP1 Total Time Frames
-        const MP1TotalStartTime = new Date('2024-08-26T00:00:00'); // Start of MP1 Total time frame
-        const MP1TotalEndTime = new Date('2024-11-04T23:59:59'); // End of MP1 Total time frame
+        const MP1TotalStartTime = new Date('2025-08-25T00:00:00'); // Start of MP1 Total time frame
+        const MP1TotalEndTime = new Date('2025-11-03T23:59:59'); // End of MP1 Total time frame
         
         // MP1 PC1 Time Frames
-        const MP1PC1StartTime = new Date('2024-08-26T00:00:00'); // Start of MP1PC1 time frame
-        const MP1PC1EndTime = new Date('2024-09-16T23:59:59'); // End of MP1PC1 time frame
+        const MP1PC1StartTime = new Date('2025-08-25T00:00:00'); // Start of MP1PC1 time frame
+        const MP1PC1EndTime = new Date('2025-09-15T23:59:59'); // End of MP1PC1 time frame
         
         // MP1 PC2 Time Frames
-        const MP1PC2StartTime = new Date('2024-09-17T00:00:00'); // Start of MP1PC2 time frame
-        const MP1PC2EndTime = new Date('2024-10-09T23:59:59'); // End of MP1PC2 time frame
+        const MP1PC2StartTime = new Date('2025-09-16T00:00:00'); // Start of MP1PC2 time frame
+        const MP1PC2EndTime = new Date('2025-10-09T23:59:59'); // End of MP1PC2 time frame
         
         // MP1 PC3 Time Frames
-        const MP1PC3StartTime = new Date('2024-10-10T00:00:00'); // Start of MP1PC3 time frame
-        const MP1PC3EndTime = new Date('2024-11-04T23:59:59'); // End of MP1PC3 time frame
+        const MP1PC3StartTime = new Date('2025-10-10T00:00:00'); // Start of MP1PC3 time frame
+        const MP1PC3EndTime = new Date('2025-11-03T23:59:59'); // End of MP1PC3 time frame
   
         // MP2 Total Time Frames
-        const MP2TotalStartTime = new Date('2024-11-05T00:00:00'); // Start of MP2 Total time frame
-        const MP2TotalEndTime = new Date('2025-01-24T23:59:59'); // End of MP2 Total time frame
+        const MP2TotalStartTime = new Date('2025-11-04T00:00:00'); // Start of MP2 Total time frame
+        const MP2TotalEndTime = new Date('2026-01-23T23:59:59'); // End of MP2 Total time frame
         
         // MP2 PC1 Time Frames
-        const MP2PC1StartTime = new Date('2024-11-05T00:00:00'); // Start of MP2PC1 time frame
-        const MP2PC1EndTime = new Date('2024-11-26T23:59:59'); // End of MP2PC1 time frame
+        const MP2PC1StartTime = new Date('2025-11-04T00:00:00'); // Start of MP2PC1 time frame
+        const MP2PC1EndTime = new Date('2025-11-25T23:59:59'); // End of MP2PC1 time frame
         
         // MP2 PC2 Time Frames
-        const MP2PC2StartTime = new Date('2024-11-27T00:00:00'); // Start of MP2PC2 time frame
-        const MP2PC2EndTime = new Date('2024-12-19T23:59:59'); // End of MP2PC2 time frame
+        const MP2PC2StartTime = new Date('2025-11-26T00:00:00'); // Start of MP2PC2 time frame
+        const MP2PC2EndTime = new Date('2025-12-18T23:59:59'); // End of MP2PC2 time frame
         
         // MP2 PC3 Time Frames
-        const MP2PC3StartTime = new Date('2024-12-20T00:00:00'); // Start of MP2PC3 time frame
-        const MP2PC3EndTime = new Date('2025-01-24T23:59:59'); // End of MP2PC3 time frame
+        const MP2PC3StartTime = new Date('2025-12-19T00:00:00'); // Start of MP2PC3 time frame
+        const MP2PC3EndTime = new Date('2026-01-23T23:59:59'); // End of MP2PC3 time frame
   
         // MP3 Total Time Frames
-        const MP3TotalStartTime = new Date('2025-01-25T00:00:00'); // Start of MP3 Total time frame
-        const MP3TotalEndTime = new Date('2025-04-01T23:59:59'); // End of MP3 Total time frame
+        const MP3TotalStartTime = new Date('2026-01-24T00:00:00'); // Start of MP3 Total time frame
+        const MP3TotalEndTime = new Date('2026-04-08T23:59:59'); // End of MP3 Total time frame
         
         // MP3 PC1 Time Frames
-        const MP3PC1StartTime = new Date('2025-01-25T00:00:00'); // Start of MP3PC1 time frame
-        const MP3PC1EndTime = new Date('2025-02-14T23:59:59'); // End of MP3PC1 time frame
+        const MP3PC1StartTime = new Date('2026-01-24T00:00:00'); // Start of MP3PC1 time frame
+        const MP3PC1EndTime = new Date('2026-02-13T23:59:59'); // End of MP3PC1 time frame
         
         // MP3 PC2 Time Frames
-        const MP3PC2StartTime = new Date('2025-02-15T00:00:00'); // Start of MP3PC2 time frame
-        const MP3PC2EndTime = new Date('2025-03-10T23:59:59'); // End of MP3PC2 time frame
+        const MP3PC2StartTime = new Date('2026-02-14T00:00:00'); // Start of MP3PC2 time frame
+        const MP3PC2EndTime = new Date('2026-03-09T23:59:59'); // End of MP3PC2 time frame
         
         // MP3 PC3 Time Frames
-        const MP3PC3StartTime = new Date('2025-03-11T00:00:00'); // Start of MP3PC3 time frame
-        const MP3PC3EndTime = new Date('2025-04-01T23:59:59'); // End of MP3PC3 time frame
+        const MP3PC3StartTime = new Date('2026-03-10T00:00:00'); // Start of MP3PC3 time frame
+        const MP3PC3EndTime = new Date('2026-04-08T23:59:59'); // End of MP3PC3 time frame
   
         // MP4 Total Time Frames
-        const MP4TotalStartTime = new Date('2025-04-02T00:00:00'); // Start of MP4 Total time frame
-        const MP4TotalEndTime = new Date('2025-06-13T23:59:59'); // End of MP4 Total time frame
+        const MP4TotalStartTime = new Date('2026-04-09T00:00:00'); // Start of MP4 Total time frame
+        const MP4TotalEndTime = new Date('2026-06-12T23:59:59'); // End of MP4 Total time frame
         
         // MP4 PC1 Time Frames
-        const MP4PC1StartTime = new Date('2025-04-02T00:00:00'); // Start of MP4PC1 time frame
-        const MP4PC1EndTime = new Date('2025-04-30T23:59:59'); // End of MP4PC1 time frame
+        const MP4PC1StartTime = new Date('2026-04-09T00:00:00'); // Start of MP4PC1 time frame
+        const MP4PC1EndTime = new Date('2026-04-29T23:59:59'); // End of MP4PC1 time frame
         
         // MP4 PC2 Time Frames
-        const MP4PC2StartTime = new Date('2025-05-01T00:00:00'); // Start of MP4PC2 time frame
-        const MP4PC2EndTime = new Date('2025-05-21T23:59:59'); // End of MP4PC2 time frame
+        const MP4PC2StartTime = new Date('2026-04-30T00:00:00'); // Start of MP4PC2 time frame
+        const MP4PC2EndTime = new Date('2026-05-20T23:59:59'); // End of MP4PC2 time frame
         
         // MP4 PC3 Time Frames
-        const MP4PC3StartTime = new Date('2025-05-22T00:00:00'); // Start of MP4PC3 time frame
-        const MP4PC3EndTime = new Date('2025-06-13T23:59:59'); // End of MP4PC3 time frame
+        const MP4PC3StartTime = new Date('2026-05-21T00:00:00'); // Start of MP4PC3 time frame
+        const MP4PC3EndTime = new Date('2026-06-12T23:59:59'); // End of MP4PC3 time frame
   
         // Define an object with all predefined time frames
         const predefinedTimeFramesObject = {
@@ -947,12 +947,12 @@
             // Create a new div with the id 'studentInsightsComingSoon'
             const studentInsightsComingSoon = document.createElement('div');
             studentInsightsComingSoon.id = 'studentInsightsComingSoon';
-            studentInsightsComingSoon.innerHTML = '<h3>Student Insights coming in 2025!</h3></br><h4>Here is a very early sneak peek at some of the Student Insights data coming soon:</h4></br>';
+            studentInsightsComingSoon.innerHTML = '<h3>Student Insights</h3><p><b>NOTE:</b> Additional Student Insights are in active development.</p></br>';
   
             // Create a new div with the id 'studentInsightsData'
             const studentInsightsData = document.createElement('div');
             studentInsightsData.id = 'studentInsightsData';
-            studentInsightsData.innerHTML = '<p>Sneak peek at Student Insights data coming soon...</p>';
+            studentInsightsData.innerHTML = '<p>There was an error loading the Student Insights data.</p>';
   
             // Append the new div to the studentInsightsContainer
             studentInsightsContainer.appendChild(studentInsightsComingSoon);

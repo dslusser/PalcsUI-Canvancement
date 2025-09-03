@@ -151,6 +151,10 @@ A separate space for release notes, both structured and unstructured.
     - Now each assignment has a data-assignment-types (that comes from an array) attribute and a data-submission-type attribute
   - Used the new data-* attributes to add discussions to the student insights sneak peek
 
+- v2.11.50:
+  - Updated marking period and progress check date ranges for the 25-26 school year.
+  - Minor updates to the message Student Insights page.
+
 - #### TODO:
 - Consider using the Canvas Inbox API/xhr request to send a message to the student directly from the page
 - Ease in and out:
