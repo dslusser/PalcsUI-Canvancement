@@ -18,6 +18,10 @@ A separate space for release notes, both structured and unstructured.
 - v5.3.01.00
   - Fixed a small issue with the add SpeedGrader Links function in rare cases when certain objects were null
 
+- v5.3.1
+  - Adjusting version numbers to align with common practice
+  - Removed some focusing on the SpeedGrader comment box when hovering over some elements. This was a hacky way to overcome the broken keyboard shortcuts that Canvas introduced into the SpeedGrader (ironic name, SpeedGrader). Canvas has now fixed the keyboard shortcuts after an absurd amount of time, so I'm removing the hacky code.
+
 ### [the-waybetter-gradebook-standalone-beta.user.js](https:github.com/dslusser/PalcsUI-Canvancement/raw/master/install/the-waybetter-gradebook-standalone-beta.user.js)
 - v2.11.27:
   - updated the code to use clearSubmissionsTableTBody() instead of clearSubmissionsTable()
