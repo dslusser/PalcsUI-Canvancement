@@ -1,5 +1,5 @@
 // ==UserScript==
-// @name          PalcsUI : Standalone : BETA
+// @name          PalcsUI : Standalone : 5.3.1-BETA
 // @author        Dan Slusser
 // @namespace     https://github.com/dslusser/PalcsUI-Canvancement
 // @description   User enhancements for the Palcs Canvas instance
@@ -7,7 +7,7 @@
 // @match         https://*.instructure.com/courses/*/quizzes/*/history?*
 // @match         https://*.instructure.com/*
 // @noframes
-// @version       5.3.01.00
+// @version       5.3.1
 // @grant         none
 // @updateURL     https://github.com/dslusser/PalcsUI-Canvancement/raw/master/install/palcs-ui-standalone-beta.user.js
 // @downloadURL   https://github.com/dslusser/PalcsUI-Canvancement/raw/master/install/palcs-ui-standalone-beta.user.js
@@ -2966,7 +2966,8 @@ function addSgStudentNameGreeting() {
           if (tinymceElement) {
             // Function to insert text at the current cursor position
             function insertTextAtCursor(text) {
-              tinymceElement.focus();  // Focus on the iframe to ensure cursor is active
+              //tinymceElement.focus();  // Focus on the iframe to ensure cursor is active
+              // Removing the focus call hack because canvas finally fixed their trash code and now the keyboard shortcuts are working
       
               // Get the current selection from the iframe document
               const selection = iframeDocContent.getSelection();
@@ -3059,7 +3060,8 @@ function addSgStudentNameGreeting() {
 
             var editor = tinymce.get('comment_rce_textarea'); // Get the TinyMCE editor instance
                     if (editor) {
-                        editor.focus(); // Focus the editor to ensure the cursor is active
+                        //editor.focus(); // Focus the editor to ensure the cursor is active
+                        // Removing the focus call hack because canvas finally fixed their trash code and now the keyboard shortcuts are working
 
                         // Save the current selection
                         const bookmark = editor.selection.getBookmark(2, true);
@@ -3114,7 +3116,8 @@ function addSgStudentNameGreeting() {
 
             var editor = tinymce.get('comment_rce_textarea'); // Get the TinyMCE editor instance
                     if (editor) {
-                        editor.focus(); // Focus the editor to ensure the cursor is active
+                        //editor.focus(); // Focus the editor to ensure the cursor is active
+                        // Removing the focus call hack because canvas finally fixed their trash code and now the keyboard shortcuts are working
 
                         // Save the current selection
                         const bookmark = editor.selection.getBookmark(2, true);

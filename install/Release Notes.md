@@ -2,7 +2,7 @@
 A separate space for release notes, both structured and unstructured.
 
 ## Release Notes
-### [palcs-ui.user.js](https:github.com/dslusser/PalcsUI-Canvancement/raw/master/install/palcs-ui.user.js) 
+### [palcs-ui-standalone.user.js](https:github.com/dslusser/PalcsUI-Canvancement/raw/master/install/palcs-ui-standalone.user.js) 
 - v5.3.00.01
   - Bug fixes and updates to address issues that popped up when Canvas updated the comment box on the SpeedGrader
     - The StudentName and LessonName replacement short code logic has been rewritten
@@ -222,3 +222,8 @@ A separate space for release notes, both structured and unstructured.
 
   - GOALS for v2.11.52:
     - Make the sticky submissions table header prettier
+
+### [palcs-ui-standalone-beta.user.js](https://github.com/dslusser/PalcsUI-Canvancement/raw/master/install/palcs-ui-standalone-beta.user.js)
+- v5.3.1
+  - Adjusting version numbers to align with common practice
+  - Removed some focusing on the SpeedGrader comment box when hovering over some elements. This was a hacky way to overcome the broken keyboard shortcuts that Canvas introduced into the SpeedGrader (ironic name, SpeedGrader). Canvas has now fixed the keyboard shortcuts after an absurd amount of time, so I'm removing the hacky code.
