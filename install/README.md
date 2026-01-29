@@ -63,4 +63,9 @@ Finally, for an assignment with a rubric, a way to download the rubric data of a
   - Adjusting version numbers to align with common practice
   - Removed some focusing on the SpeedGrader comment box when hovering over some elements. This was a hacky way to overcome the broken keyboard shortcuts that Canvas introduced into the SpeedGrader (ironic name, SpeedGrader). Canvas has now fixed the keyboard shortcuts after an absurd amount of time, so I'm removing the hacky code.
 
+### [palcschool-rc-entry.user.js](https://github.com/dslusser/PalcsUI-Canvancement/raw/master/install/palcschool-rc-entry.user.js)
+- v3.1.0
+  - Creating this script as an update to [palcschool-rce.user.js](https://github.com/dslusser/PalcsUI-Canvancement/raw/master/install/palcschool-rce.user.js) which will be deprecated in the future.
+  - This is a hacked together upgrade that is held together with duck tape and string. This script will eventually fail in the future with any minor or major platform upgrades. At that point, this script will most likely be deprecated as well.
+
 ### See [Release Notes](Release%20Notes.md) for additional information on the releases
