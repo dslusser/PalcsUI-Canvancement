@@ -67,5 +67,7 @@ Finally, for an assignment with a rubric, a way to download the rubric data of a
 - v3.1.0
   - Creating this script as an update to [palcschool-rce.user.js](https://github.com/dslusser/PalcsUI-Canvancement/raw/master/install/palcschool-rce.user.js) which will be deprecated in the future.
   - This is a hacked together upgrade that is held together with duck tape and string. This script will eventually fail in the future with any minor or major platform upgrades. At that point, this script will most likely be deprecated as well.
+- v3.1.1
+  - Removed the automatic floor grade. Student's true grades will be copied.
 
 ### See [Release Notes](Release%20Notes.md) for additional information on the releases

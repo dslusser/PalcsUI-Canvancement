@@ -1,11 +1,11 @@
 // ==UserScript==
-// @name        Palcschool RC Entry v3.1.0
+// @name        Palcschool RC Entry v3.1.1
 // @namespace   https://github.com/dslusser/PalcsUI-Canvancement
 // @description Copy grades and automatically add comments to Report Card Entry page.
 // @match       https://*.palcschool.org/moodle/palcs20/dashboard/teacher/rc_entry.php*
 // @match       https://*palcschool.org/moodle/palcs20/dashboard/teacher/rc_entry.php*
 // @noframes
-// @version     3.1.0
+// @version     3.1.1
 // @grant       none
 // @author      Dan Slusser
 // ==/UserScript==
@@ -102,10 +102,16 @@
 
             // The second argument here, 50, stands for the floor grade if/when a it's a floor grade course.
             // Adding the argument should round any grade below a 50, up to a 50.
-            rcCopyCanvas2Gradebook("cag", 50); // RCE function to copy all MP or PC grades
-            rcCopyCanvas2Gradebook("caexam", 50); // RCE function to copy course final exam scores???
-            rcCopyCanvas2Gradebook("mte", 50); // RCE function to copy course mid-term exam scores???
-            rcCopyCanvas2Gradebook("fca", 50); // RCE function to copy all course final grades???
+            //rcCopyCanvas2Gradebook("cag", 50); // RCE function to copy all MP or PC grades
+            //rcCopyCanvas2Gradebook("caexam", 50); // RCE function to copy course final exam scores???
+            //rcCopyCanvas2Gradebook("mte", 50); // RCE function to copy course mid-term exam scores???
+            //rcCopyCanvas2Gradebook("fca", 50); // RCE function to copy all course final grades???
+
+            // No floor grade argument being passed here. Student awarded their earned grade.
+            rcCopyCanvas2Gradebook("cag"); // RCE function to copy all MP or PC grades
+            rcCopyCanvas2Gradebook("caexam"); // RCE function to copy course final exam scores???
+            rcCopyCanvas2Gradebook("mte"); // RCE function to copy course mid-term exam scores???
+            rcCopyCanvas2Gradebook("fca"); // RCE function to copy all course final grades???
 
 
             var studentIDs = document.getElementById('studentids').value
