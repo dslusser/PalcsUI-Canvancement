@@ -1,13 +1,15 @@
 // ==UserScript==
-// @name        Palcschool RC Entry v3.1.1
-// @namespace   https://github.com/dslusser/PalcsUI-Canvancement
-// @description Copy grades and automatically add comments to Report Card Entry page.
-// @match       https://*.palcschool.org/moodle/palcs20/dashboard/teacher/rc_entry.php*
-// @match       https://*palcschool.org/moodle/palcs20/dashboard/teacher/rc_entry.php*
+// @name            Palcschool RC Entry Assistant
+// @namespace       https://github.com/dslusser/PalcsUI-Canvancement
+// @description     Copy grades and automatically add comments to Report Card Entry page.
+// @match           https://*.palcschool.org/moodle/palcs20/dashboard/teacher/rc_entry.php*
+// @match           https://*palcschool.org/moodle/palcs20/dashboard/teacher/rc_entry.php*
 // @noframes
-// @version     3.1.1
-// @grant       none
-// @author      Dan Slusser
+// @version         3.1.2
+// @grant           none
+// @author          Dan Slusser
+// @updateURL       https://github.com/dslusser/PalcsUI-Canvancement/raw/master/install/palcschool-rc-entry.user.js
+// @downloadURL     https://github.com/dslusser/PalcsUI-Canvancement/raw/master/install/palcschool-rc-entry.user.js
 // ==/UserScript==
 (function () {
     'use strict';
@@ -227,7 +229,7 @@
 
         if (typeof PalcschoolRCE !== 'function') {
             const script = document.createElement('script');
-            script.src = 'https://gitcdn.xyz/repo/dslusser/PalcsUI-Canvancement/master/install/palcschool-rce.user.js';
+            script.src = 'https://gitcdn.xyz/repo/dslusser/PalcsUI-Canvancement/master/install/palcschool-rc-entry.user.js';
             script.onload = function() {
                 PalcschoolRCE();
                 //console.log('Missing function, loading fallback script.');

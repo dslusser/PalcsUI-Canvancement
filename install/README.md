@@ -69,5 +69,8 @@ Finally, for an assignment with a rubric, a way to download the rubric data of a
   - This is a hacked together upgrade that is held together with duck tape and string. This script will eventually fail in the future with any minor or major platform upgrades. At that point, this script will most likely be deprecated as well.
 - v3.1.1
   - Removed the automatic floor grade. Student's true grades will be copied.
+- v3.1.2
+  - Updated script name and removed the version number on the script name
+  - Added the update url and download url to the metadata of the script
 
 ### See [Release Notes](Release%20Notes.md) for additional information on the releases
