@@ -25,6 +25,9 @@ A separate space for release notes, both structured and unstructured.
 - v5.4.16
   - Refactored code in the SpeedGrader portion of the script to account for the breaking changes that Canvas introduced with their "new" and updated SpeedGrader.
 
+- v5.4.18
+  - Minor update to fix a specific instance when the grade percentage wouldn't adjust when updating quiz scores on a manually graded question.
+
 ### [palcschool-rc-entry.user.js](https://github.com/dslusser/PalcsUI-Canvancement/raw/master/install/palcschool-rc-entry.user.js)
 - v3.1.0
   - Creating this script as an update to [palcschool-rce.user.js](https://github.com/dslusser/PalcsUI-Canvancement/raw/master/install/palcschool-rce.user.js) which will be deprecated in the future.

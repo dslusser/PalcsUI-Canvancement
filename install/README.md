@@ -61,6 +61,9 @@ Finally, for an assignment with a rubric, a way to download the rubric data of a
 - v5.4.16
   - Refactored code in the SpeedGrader portion of the script to account for the breaking changes that Canvas introduced with their "new" and updated SpeedGrader.
 
+- v5.4.18
+  - Minor update to fix a specific instance when the grade percentage wouldn't adjust when updating quiz scores on a manually graded question.
+
 ### [palcs-ui-standalone-beta.user.js](https://github.com/dslusser/PalcsUI-Canvancement/raw/master/install/palcs-ui-standalone-beta.user.js)
 - v5.3.1
   - Adjusting version numbers to align with common practice
