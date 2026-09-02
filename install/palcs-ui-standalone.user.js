@@ -7,7 +7,7 @@
 // @match         https://*.instructure.com/courses/*/quizzes/*/history?*
 // @match         https://*.instructure.com/*
 // @noframes
-// @version       5.3.1
+// @version       5.4.16
 // @grant         none
 // @updateURL     https://github.com/dslusser/PalcsUI-Canvancement/raw/master/install/palcs-ui-standalone.user.js
 // @downloadURL   https://github.com/dslusser/PalcsUI-Canvancement/raw/master/install/palcs-ui-standalone.user.js
@@ -205,7 +205,190 @@
     var D = document;
     var advanceUser = false;
     var advanceSrc = false;
-    var advanceRubric = false;
+
+    // ---------------------------------------------------------------------
+    // SpeedGrader DOM helpers (New/React SpeedGrader - "Performance and
+    // Usability Upgrades for SpeedGrader"). All lookups are done fresh at
+    // call time (never cached) because React remounts several of these
+    // elements - especially the grade input and the rubric panel - on
+    // every student navigation, which changes their auto-generated ids.
+    // data-testid attributes are the stable hook Canvas provides instead.
+    // ---------------------------------------------------------------------
+    function sgCommentInputWrapper() {
+      return document.querySelector('[data-testid="assignment-comment-input"]');
+    }
+    function sgCommentRceIframe() {
+      var wrapper = sgCommentInputWrapper();
+      return wrapper ? wrapper.querySelector('iframe.tox-edit-area__iframe') : null;
+    }
+    function sgCommentEditor() {
+      // Resolve the live TinyMCE editor instance for the comment box.
+      // The underlying textarea/iframe ids are randomly generated per mount
+      // (e.g. "rce-9xh8ffr"), so we look the id up dynamically instead of
+      // hardcoding the old "comment_rce_textarea" id.
+      var wrapper = sgCommentInputWrapper();
+      var textarea = wrapper ? wrapper.querySelector('textarea') : null;
+      if (!textarea || typeof tinymce === 'undefined') {
+        return null;
+      }
+      return tinymce.get(textarea.id) || null;
+    }
+    function sgCommentSubmitButton() {
+      return document.querySelector('[data-testid="submit-comment-button"]') ||
+             document.getElementById('comment_submit_button');
+    }
+    function sgCommentsContainer() {
+      var label = document.querySelector('[data-testid="comments-label"]');
+      if (!label) {
+        return null;
+      }
+      var heading = label.closest('h2');
+      return heading ? heading.parentElement : null;
+    }
+    function sgGradeInput() {
+      return document.querySelector('[data-testid="grade-input"]');
+    }
+    function sgPointsPossible() {
+      // The label reads "Grade out of N"
+      var label = document.querySelector('[data-testid="grade-text"]');
+      if (!label) {
+        return NaN;
+      }
+      var match = label.textContent.match(/([\d.]+)\s*$/);
+      return match ? parseFloat(match[1], 10) : NaN;
+    }
+    function sgNextStudentButton() {
+      return document.getElementById('next-student-button') ||
+             document.querySelector('[data-testid="next-student-button"]');
+    }
+    function sgPrevStudentButton() {
+      return document.getElementById('prev-student-button') ||
+             document.querySelector('[data-testid="previous-student-button"]');
+    }
+    function sgStudentIndexEl() {
+      return document.querySelector('[data-testid="current-student-index"]');
+    }
+    function sgGradedCountEl() {
+      return document.querySelector('[data-testid="graded-students-count"]');
+    }
+    function sgSubmissionIframe() {
+      return document.getElementById('submission-preview-iframe') ||
+             document.querySelector('[data-testid="submission-preview-iframe"]');
+    }
+    function sgStudentFirstName() {
+      // Prefer the avatar's "name" attribute over the trigger button's
+      // textContent - the trigger also renders a graded/needs-grading status
+      // indicator (a "●" character) next to the name, which textContent
+      // would pick up and prepend to the short code replacement.
+      var avatar = document.querySelector('[data-testid="student-select-trigger"] [data-testid="student-avatar"]');
+      var fullName = avatar ? (avatar.getAttribute('name') || '') : '';
+      if (!fullName) {
+        var trigger = document.querySelector('[data-testid="student-select-trigger"]');
+        fullName = trigger ? trigger.textContent.trim() : '';
+        // Strip any leading non-letter status characters just in case.
+        fullName = fullName.replace(/^[^\p{L}]+/u, '');
+      }
+      return fullName.trim().split(/\s+/)[0] || '';
+    }
+    function sgAssignmentName() {
+      var el = document.querySelector('[data-testid="assignment-title-name"]');
+      return el ? el.textContent.trim() : '';
+    }
+    function sgSetReactInputValue(input, value) {
+      // React-controlled inputs (InstUI TextInput) ignore a plain
+      // `input.value = x` assignment because React's own value tracker
+      // intercepts it. Going through the native setter first, then firing a
+      // real 'input' event, is the standard workaround so React (and
+      // therefore Canvas's save logic) actually sees the change.
+      var setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
+      setter.call(input, value);
+      input.dispatchEvent(new Event('input', { 'bubbles' : true }));
+    }
+    function sgRubricContainer() {
+      return document.querySelector('[data-testid="enhanced-rubric-assessment-container"]');
+    }
+    function sgRubricSaveButton() {
+      return document.querySelector('[data-testid="save-rubric-assessment-button"]');
+    }
+    function sgRubricToggleButton() {
+      return document.querySelector('[data-testid="view-rubric-button"]');
+    }
+    function sgRubricCriterionScoreInputs() {
+      return document.querySelectorAll('[data-testid^="criterion-score-"]');
+    }
+    // Runs installFn(el) once per matching element the first time it
+    // appears, and again any time React swaps it out for a new node
+    // (detected via a data attribute marker on the previous node no longer
+    // being present). Needed because one-time addEventListener/insertBefore
+    // calls do not survive React remounting the grading panel or rubric
+    // panel on every student navigation.
+    function sgObserveAndInstall(selector, markerAttr, installFn, root) {
+      function tryInstall() {
+        var el = document.querySelector(selector);
+        if (el && !el.hasAttribute(markerAttr)) {
+          el.setAttribute(markerAttr, 'true');
+          installFn(el);
+        }
+      }
+      tryInstall();
+      var observeRoot = root || document.querySelector('[data-testid="speedgrader-grading-panel"]') || document.body;
+      var observer = new MutationObserver(tryInstall);
+      observer.observe(observeRoot, { childList: true, subtree: true });
+      return observer;
+    }
+    // Same as sgObserveAndInstall, but for selectors that can match more
+    // than one element at once (e.g. several injected "advance" buttons).
+    function sgObserveAndInstallAll(selector, markerAttr, installFn, root) {
+      function tryInstall() {
+        document.querySelectorAll(selector).forEach(function(el) {
+          if (!el.hasAttribute(markerAttr)) {
+            el.setAttribute(markerAttr, 'true');
+            installFn(el);
+          }
+        });
+      }
+      tryInstall();
+      var observeRoot = root || document.querySelector('[data-testid="speedgrader-grading-panel"]') || document.body;
+      var observer = new MutationObserver(tryInstall);
+      observer.observe(observeRoot, { childList: true, subtree: true });
+      return observer;
+    }
+    // Resolves once `predicate(mutations)` returns true for a mutation on
+    // `target`, or after `timeoutMs` as a fallback so a slow/failed request
+    // can't hang the calling flow forever. Used to wait for real
+    // confirmation that an action (comment submit, grade save) actually
+    // completed, instead of guessing a fixed delay - navigating to the next
+    // student before a submit has actually finished is itself enough to
+    // make Canvas's Comment Drafts feature treat it as "left without
+    // submitting" and save a draft, even though the submit also succeeds.
+    function sgWaitForMutation(target, mutationOptions, predicate, timeoutMs) {
+      return new Promise((resolve) => {
+        if (!target) {
+          resolve(false);
+          return;
+        }
+        var done = false;
+        var observer = new MutationObserver(function(mutations) {
+          if (done) {
+            return;
+          }
+          if (predicate(mutations)) {
+            done = true;
+            clearTimeout(timer);
+            observer.disconnect();
+            resolve(true);
+          }
+        });
+        var timer = setTimeout(function() {
+          if (!done) {
+            done = true;
+            observer.disconnect();
+            resolve(false);
+          }
+        }, timeoutMs || 4000);
+        observer.observe(target, mutationOptions);
+      });
+    }
 
     if (/^.*\.instructure\.com$/.test(window.location.host)) {
         isCanvas = true;
@@ -281,7 +464,6 @@
       if (isSG) {
         updateObserver();
         commentObserver();
-        rubricObserver();
         navigationObserver();
       }
       return;
@@ -300,17 +482,22 @@
         }
       }
       if (install) {
-        var src = document.getElementById('x_of_x_graded');
-        if (!src) {
-          return;
-        }
-        var observer = new MutationObserver(function() {
-          if (advanceUser && advanceSrc) {
-            nextUser();
-          }
-        });
-        observer.observe(src, {
-          'childList' : true
+        // sgObserveAndInstall (rather than a one-shot querySelector) matters
+        // here: this whole setup runs once at script-init time, which is
+        // often before React has mounted the grading panel yet. A one-shot
+        // lookup would silently find nothing and never retry, which is why
+        // "advance after save" was not firing at all.
+        sgObserveAndInstall('[data-testid="graded-students-count"]', 'data-palcsui-update-observer-installed', function(src) {
+          var observer = new MutationObserver(function() {
+            if (advanceUser && advanceSrc) {
+              nextUser();
+            }
+          });
+          observer.observe(src, {
+            'characterData' : true,
+            'childList' : true,
+            'subtree' : true
+          });
         });
       }
       return;
@@ -335,226 +522,144 @@
       }
       // Check for autoAdvance on Comment Submission
       if (typeof config.nextAfterComment !== 'undefined' && config.nextAfterComment) {
-        var src = document.getElementById('comments');
-        if (!src) {
-          return;
-        }
-        var observer = new MutationObserver(function(mutations) {
-          var status = false;
-          mutations.forEach(function(mutation) {
-            if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
-              for (var i = 0; i < mutation.addedNodes.length; i++) {
-                if (!mutation.addedNodes[i].classList.contains('draft')) {
-                  status = true;
+        // Same reasoning as updateObserver(): this runs once at script-init
+        // time, typically before React has rendered the comments panel, so
+        // a one-shot lookup here was the direct cause of "submits the
+        // comment but never advances" - it silently found nothing once and
+        // never tried again. sgObserveAndInstall retries until it exists.
+        sgObserveAndInstall('[data-testid="comments-label"]', 'data-palcsui-comment-observer-installed', function() {
+          var src = sgCommentsContainer();
+          if (!src) {
+            return;
+          }
+          var observer = new MutationObserver(function(mutations) {
+            var status = false;
+            mutations.forEach(function(mutation) {
+              if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
+                for (var i = 0; i < mutation.addedNodes.length; i++) {
+                  var node = mutation.addedNodes[i];
+                  if (node.nodeType === 1 && node.getAttribute &&
+                      /^comment-\d+$/.test(node.getAttribute('data-testid') || '')) {
+                    status = true;
+                  }
                 }
               }
+            });
+            if (status && advanceUser) {
+              nextUser();
             }
           });
-          if (status && advanceUser) {
-            nextUser();
-          }
-        });
-        observer.observe(src, {
-          'childList' : true
+          observer.observe(src, {
+            'childList' : true
+          });
         });
       }
       return;
     }
 
     function addNextComment() {
-      if (isSG && typeof config.nextAfterComment !== 'undefined' && config.nextAfterComment) {
-        var btn = document.getElementById('comment_submit_button');
-        if (btn) {
-          var parent = btn.parentNode;
-          if (parent) {
-            var advance = advanceButton(commentAdvance, {
-              'title' : 'Save grades, submit comments, and advance to next user'
-            });
-            btn.title = 'Submit comments only, stay on this user';
-            parent.insertBefore(advance, btn.nextSibling);
-          }
-        }
+      if (!(isSG && typeof config.nextAfterComment !== 'undefined' && config.nextAfterComment)) {
+        return;
       }
+      // The comment submit button is remounted on every student navigation
+      // (React), so install the "advance" button next to it every time it
+      // reappears rather than once at page load.
+      sgObserveAndInstall('[data-testid="submit-comment-button"]', 'data-palcsui-advance-installed', function(btn) {
+        var parent = btn.parentNode;
+        if (!parent) {
+          return;
+        }
+        var advance = advanceButton(commentAdvance, {
+          'title' : 'Save grades, submit comments, and advance to next user'
+        });
+        btn.title = 'Submit comments only, stay on this user';
+        parent.insertBefore(advance, btn.nextSibling);
+      });
     }
 
     function commentAdvance() {
-      // Canvas updated the comment box to use TinyMCE Rich Content Editor, this breaks the current commentAdvance function
-      // Specifically the var comment is no longer available
-      // We need to make a new variable to reach into the TinyMCE iframe to get the comment value...DWS
-      // Use replaceSgStudentNameShortCode() as a template for how to access the iframe content and 
-      // how to create an if statement to keep this current code, but add the new code for the TinyMCE editor
-      // Don't forget to also look at awardFullPointsAndNext() for how to add replaceSgStudentNameShortCode()
-      // with a promise if we end up adding replaceSgLessonNameShortCode() or replaceSgStudentNameShortCode() here - DWS
+      // New (React) SpeedGrader: the comment box is always the TinyMCE RCE now.
+      // The old plain <textarea id="speed_grader_comment_textarea"> path and the
+      // dead "force grading box to full value without dispatching change" block
+      // (which never actually worked against a React-controlled input) have
+      // been removed. Editor lookups go through sgCommentEditor() since the
+      // RCE's ids are randomly generated on every mount.
 
       // Get the functions from addSgStudentNameGreeting
-      const { launchShortCodeReplacementFunctions, replaceSgStudentNameShortCode, replaceSgLessonNameShortCode } = addSgStudentNameGreeting();
-
-      function dispatchGradingBoxChange(gradingBox) {
-        return new Promise((resolve) => {
-            advanceUser = false;
-            advanceSrc = 'grade';
-            gradingBox.dispatchEvent(new Event('change', { 'bubbles': true }));
-    
-            // Resolve the promise after a short delay to allow event processing
-            setTimeout(() => {
-                resolve();
-            }, 100); // Adjust the delay as needed
-        });
-      };
+      const { launchShortCodeReplacementFunctions } = addSgStudentNameGreeting();
 
       function dispatchCommentSubmit(btn) {
         return new Promise((resolve) => {
             advanceUser = true;
             advanceSrc = 'comment';
             btn.dispatchEvent(new Event('click', { 'bubbles': true }));
-    
+
             // Resolve the promise after a short delay to allow event processing
             setTimeout(() => {
-                rubricAdvance(); // New addition; allows for saving of the rubric scores when the comment is submitted - DWS
+                rubricAdvance(); // Allows for saving of the rubric scores when the comment is submitted
                 resolve();
             }, 100); // Adjust the delay as needed
         });
       };
 
+      var editor = sgCommentEditor();
+      var isEmpty = !editor || editor.getContent({ format: 'text' }).trim().length === 0;
 
-        var commentBoxTextArea = document.getElementById('speed_grader_comment_textarea');
-        var comment_rce_textarea_ifr = document.getElementById("comment_rce_textarea_ifr");
+      if (isEmpty) {
+        advanceUser = true;
+        advanceSrc = false;
+        nextUser();
+        return;
+      }
 
-        if (commentBoxTextArea){
+      // If focus was somewhere else (e.g. the grade box) when this was
+      // clicked, re-engage the editor before touching it. This can't undo
+      // a draft-save that Canvas's own code may have already triggered when
+      // focus first left the editor (that already happened before this
+      // function ever ran), but it avoids adding any further focus churn
+      // of our own on top of it.
+      if (editor.getBody) {
+        editor.focus();
+      }
 
-          var comment = commentBoxTextArea || document.getElementById('speedgrader_comment_textarea');
-          if (!comment || comment.value.trim().length === 0) {
-            advanceUser = true;
-            advanceSrc = false;
-            nextUser();
-            return;
-          }
-          var btn = document.getElementById('comment_submit_button');
-          if (btn) {
-            advanceUser = true;
-            advanceSrc = 'comment';
-            btn.dispatchEvent(new Event('click', {
-              'bubbles' : true
-            }));
-          }
-
-
-        } else if (comment_rce_textarea_ifr) {
-
-          var iframeDocContent = comment_rce_textarea_ifr.contentDocument || comment_rce_textarea_ifr.contentWindow.document;
-          var tinymceElement = iframeDocContent.getElementById("tinymce");
-          var tinymceValue = tinymceElement ? tinymceElement.innerHTML : null;
-
-          // Should we add the replaceSgStudentNameShortCode() and replaceSgLessonNameShortCode() here?
-          // Use replaceSgStudentNameShortCode here
-          //replaceSgStudentNameShortCode();
-
-          // Use replaceSgLessonNameShortCode here
-          //replaceSgLessonNameShortCode();
-
-          // NOTE: Because of TinyMCE, the tinymceValue length is never 0. Canvas TinyMCE adds a <p><br data-mce-bogus="1"></p> 
-          // when the comment box is empty, or when there is an empty line in the comment box.
-          // The least amount of text that will be added to the comment box is 30 characters: <p><br data-mce-bogus="1"></p>
-          // OR the least amount of text that will be added to the comment box is 8 characters: <p>a</p>
-          if (!tinymceValue || tinymceValue.trim().length === 0) {
-            advanceUser = true;
-            advanceSrc = false;
-            nextUser();
-            return;
-          }
-          var btn = document.getElementById('comment_submit_button');
-          var gradingBox = document.querySelector('input#grading-box-extended');
-          if (btn && gradingBox) {
-            dispatchGradingBoxChange(gradingBox)
-                .then(() => {
-                    return launchShortCodeReplacementFunctions();
-                })
-                .then(() => {
-                    return dispatchCommentSubmit(btn);
-                })
-                .catch((error) => {
-                    console.error("Error processing events:", error);
-                });
-          }
-
-          //var studentGrade = parseFloat(document.getElementById('grading-box-extended').value, 10);
-          var gradingBox = document.querySelector('input#grading-box-extended');
-          var assignmentValue = parseFloat(document.getElementById('grade_container').innerText.split(/(\d+)/g)[1], 10);
-
-          var studentGradeBox = document.getElementById('grading-box-extended');
-          //console.log('Original value = ' + studentGradeBox.value);
-          studentGradeBox.value = assignmentValue;
-          studentGradeBox.setAttribute('value', studentGradeBox.value);
-          //console.log('New value = ' + studentGradeBox.value);
-
-          if (isNaN(assignmentValue)) {
-            console.log('Assignment Value is not a number');
-          }
-
-          /*advanceUser = true;
-          advanceSrc = 'grade';
-          gradingBox.dispatchEvent(new Event('change', {
-            'bubbles' : true
-          }));*/
-
-
-        }
-
-
+      var btn = sgCommentSubmitButton();
+      if (btn) {
+        launchShortCodeReplacementFunctions()
+            .then(() => {
+              return new Promise(resolve => setTimeout(resolve, 100));
+            })
+            .then(() => {
+              return dispatchCommentSubmit(btn);
+            })
+            .catch((error) => {
+                console.error("Error processing events:", error);
+            });
+      }
     }
 
     // Rubrics
-    function rubricObserver() {
-      if (!isSG) {
+    function addNextRubric() {
+      if (!(isSG && typeof config.nextAfterRubric !== 'undefined' && config.nextAfterRubric)) {
         return;
       }
-      // Needed if expanding after autoAdvance
-      var install = true;
-      var triggers = [ 'nextAfterRubric', 'nextRubricExpanded' ];
-      for (var i = 0; i < triggers.length; i++) {
-        if (typeof config[triggers[i]] === 'undefined' || !config[triggers[i]]) {
-          install = false;
-        }
-      }
-      // Watch for for visibility on rubric to change to be none
-      if (install) {
-        var src = document.getElementById('rubric_full');
-        if (!src) {
+      // The rubric panel (and its Submit Assessment button) is remounted on
+      // every student navigation, so re-install the advance button every
+      // time it reappears instead of once at page load.
+      sgObserveAndInstall('[data-testid="save-rubric-assessment-button"]', 'data-palcsui-advance-installed', function(btn) {
+        var parent = btn.parentNode;
+        if (!parent) {
           return;
         }
-        var observer = new MutationObserver(function() {
-          if (advanceRubric) {
-            var src = document.getElementById('rubric_full');
-            if (typeof src.style.display !== 'undefined' && src.style.display === 'none') {
-              showRubric();
-            }
-          }
+        var advance = advanceButton(rubricAdvanceWithComments, {
+          'title' : 'Save rubric and comments, advance to next user'
         });
-        observer.observe(src, {
-          'attributes' : true,
-        });
-      }
-    }
-
-    function addNextRubric() {
-      if (isSG && typeof config.nextAfterRubric !== 'undefined' && config.nextAfterRubric) {
-        var btn = document.querySelector('div#rubric_holder button.save_rubric_button');
-        if (btn) {
-          var parent = btn.parentNode;
-          if (parent) {
-            var advance = advanceButton(rubricAdvanceWithComments, {
-              'title' : 'Save rubric and comments, advance to next user'
-            });
-            btn.title = 'Save rubric only, stay on this user';
-            advance.style.marginLeft = '3px';
-            parent.insertBefore(advance, btn.nextSibling);
-          }
-        }
-      }
+        btn.title = 'Save rubric only, stay on this user';
+        parent.insertBefore(advance, btn.nextSibling);
+      });
     }
 
     function rubricAdvance() {
-      var btn = document.querySelector('div#rubric_holder button.save_rubric_button');
+      var btn = sgRubricSaveButton();
       if (btn) {
         advanceUser = true;
         advanceSrc = 'rubric';
@@ -567,12 +672,12 @@
     function rubricSaveAndAdvance() {
       return new Promise((resolve, reject) => {
           try {
-              var btn = document.querySelector('div#rubric_holder button.save_rubric_button');
+              var btn = sgRubricSaveButton();
               if (btn) {
                   advanceUser = true;
                   advanceSrc = 'rubric';
                   btn.dispatchEvent(new Event('click', { 'bubbles': true }));
-  
+
                   // Resolve the promise after a short delay to allow event processing
                   setTimeout(() => {
                       resolve();
@@ -591,122 +696,104 @@
     function advanceButton(f, options) {
       var advance = D.createElement('button');
       advance.type = 'button';
-      advance.classList.add('btn', 'btn-primary', namespace + '_next');
-      if (typeof options.size !== 'undefined' && options.size) {
-        advance.classList.add('btn-' + options.size);
-      }
+      advance.classList.add(namespace + '_next');
       if (typeof options.title !== 'undefined' && options.title) {
         advance.title = options.title;
+        advance.setAttribute('aria-label', options.title);
       }
-      // var text = D.createTextNode('&');
-      // advance.appendChild(text);
-      var icon = D.createElement('i');
-      icon.classList.add('icon-mini-arrow-right', namespace + '_next');
-      advance.style.paddingLeft = '1px';
-      advance.style.paddingRight = '1px';
-      advance.appendChild(icon);
+      advance.textContent = '\u2192'; // →
+      // The old ".btn.btn-primary" classes and "icon-mini-arrow-right" icon
+      // font came from classic Canvas's Bootstrap CSS, which the new
+      // React SpeedGrader page doesn't load - without them (and with the
+      // page's own button reset CSS applying) the button rendered as a
+      // near-invisible tiny circle. Style it inline instead so it renders
+      // consistently no matter what CSS the host page has loaded.
+      // Color matches Canvas's own primary button - confirmed from the
+      // page's --ic-brand-button--primary-bgd CSS custom property (falls
+      // back to the literal value if that variable isn't defined for some
+      // reason). Default height (2.375rem) matches InstUI's standard
+      // control height - this is right for the comment/rubric advance
+      // buttons, which sit beside Canvas's own same-height Submit/Save
+      // buttons. Pass options.compact for buttons that don't sit beside a
+      // matching-height sibling (currently just the award-full-points
+      // button, which sits below the grade box on its own).
+      var isCompact = !!options.compact;
+      advance.style.cssText = isCompact ?
+        ('display:inline-flex;align-items:center;justify-content:center;' +
+        'box-sizing:border-box;min-width:1.6rem;height:1.6rem;padding:0 0.5rem;' +
+        'margin-left:0.5rem;vertical-align:middle;' +
+        'border:none;border-radius:0.2rem;' +
+        'background-color:var(--ic-brand-button--primary-bgd, #4a90e2);' +
+        'color:var(--ic-brand-button--primary-text, #ffffff);' +
+        'font-size:0.875rem;line-height:1;font-weight:bold;cursor:pointer;') :
+        ('display:inline-flex;align-items:center;justify-content:center;' +
+        'box-sizing:border-box;min-width:2.375rem;height:2.375rem;padding:0 0.75rem;' +
+        'margin-left:0.5rem;vertical-align:middle;' +
+        'border:none;border-radius:0.25rem;' +
+        'background-color:var(--ic-brand-button--primary-bgd, #4a90e2);' +
+        'color:var(--ic-brand-button--primary-text, #ffffff);' +
+        'font-size:1rem;line-height:1;font-weight:bold;cursor:pointer;');
+      advance.addEventListener('mouseenter', function() {
+        advance.style.backgroundColor = '#3a7bc8';
+      });
+      advance.addEventListener('mouseleave', function() {
+        advance.style.backgroundColor = 'var(--ic-brand-button--primary-bgd, #4a90e2)';
+      });
       advance.addEventListener('click', f);
       return advance;
     }
 
     function rubricAdvanceWithComments() {
-      // Canvas updated the comment box to use TinyMCE Rich Content Editor, this breaks the current commentAdvance function
-      // Specifically the var comment is no longer available
-      // We need to make a new variable to reach into the TinyMCE iframe to get the comment value...DWS
-      // Use replaceSgStudentNameShortCode() as a template for how to access the iframe content and 
-      // how to create an if statement to keep this current code, but add the new code for the TinyMCE editor
-      // Don't forget to also look at awardFullPointsAndNext() for how to add replaceSgStudentNameShortCode()
-      // with a promise if we end up adding replaceSgLessonNameShortCode() or replaceSgStudentNameShortCode() here - DWS
+      // New (React) SpeedGrader: the comment box is always the TinyMCE RCE.
+      // The old plain-textarea fallback path has been removed (see
+      // commentAdvance() for the same change and why).
 
       // Get the functions from addSgStudentNameGreeting
-      const { launchShortCodeReplacementFunctions, replaceSgStudentNameShortCode, replaceSgLessonNameShortCode } = addSgStudentNameGreeting();
+      const { launchShortCodeReplacementFunctions } = addSgStudentNameGreeting();
 
       function dispatchCommentSubmit(btn) {
         return new Promise((resolve) => {
             advanceUser = false;
             advanceSrc = 'comment';
             btn.dispatchEvent(new Event('click', { 'bubbles': true }));
-    
+
             // Resolve the promise after a short delay to allow event processing
             setTimeout(() => {
-                //rubricAdvance(); // New addition; allows for saving of the rubric scores when the comment is submitted - DWS
-                //advanceUser = false;
-                //advanceSrc = 'comment';
                 resolve();
             }, 100); // Adjust the delay as needed
         });
       };
 
+      var editor = sgCommentEditor();
+      var isEmpty = !editor || editor.getContent({ format: 'text' }).trim().length === 0;
 
-        var commentBoxTextArea = document.getElementById('speed_grader_comment_textarea');
-        var comment_rce_textarea_ifr = document.getElementById("comment_rce_textarea_ifr");
+      if (isEmpty) {
+        // Nothing to submit as a comment - just save the rubric and advance.
+        rubricSaveAndAdvance().catch((error) => {
+          console.error("Error processing events:", error);
+        });
+        return;
+      }
 
-        if (commentBoxTextArea){
-
-          var comment = commentBoxTextArea || document.getElementById('speedgrader_comment_textarea');
-          if (!comment || comment.value.trim().length === 0) {
-            advanceUser = true;
-            advanceSrc = false;
-            nextUser();
-            return;
-          }
-          var btn = document.getElementById('comment_submit_button');
-          if (btn) {
-            advanceUser = true;
-            advanceSrc = 'comment';
-            btn.dispatchEvent(new Event('click', {
-              'bubbles' : true
-            }));
-          }
-
-
-        } else if (comment_rce_textarea_ifr) {
-
-          var iframeDocContent = comment_rce_textarea_ifr.contentDocument || comment_rce_textarea_ifr.contentWindow.document;
-          var tinymceElement = iframeDocContent.getElementById("tinymce");
-          var tinymceValue = tinymceElement ? tinymceElement.innerHTML : null;
-
-          // Should we add the replaceSgStudentNameShortCode() and replaceSgLessonNameShortCode() here?
-          // Use replaceSgStudentNameShortCode here
-          //replaceSgStudentNameShortCode();
-
-          // Use replaceSgLessonNameShortCode here
-          //replaceSgLessonNameShortCode();
-
-          // NOTE: Because of TinyMCE, the tinymceValue length is never 0. Canvas TinyMCE adds a <p><br data-mce-bogus="1"></p> 
-          // when the comment box is empty, or when there is an empty line in the comment box.
-          // The least amount of text that will be added to the comment box is 30 characters: <p><br data-mce-bogus="1"></p>
-          // OR the least amount of text that will be added to the comment box is 8 characters: <p>a</p>
-          if (!tinymceValue || tinymceValue.trim().length === 0) {
-            advanceUser = true;
-            advanceSrc = false;
-            nextUser();
-            return;
-          }
-          var btn = document.getElementById('comment_submit_button');
-          if (btn) {
-            launchShortCodeReplacementFunctions()
-                .then(() => {
-                  return new Promise(resolve => setTimeout(resolve, 100)); // Ensure 1200ms delay
-                })
-                .then(() => {
-                  return dispatchCommentSubmit(btn);
-                })
-                .then(() => {
-                  return new Promise(resolve => setTimeout(resolve, 100)); // Ensure 5000ms delay
-                })
-                .then(() => {
-                  return rubricSaveAndAdvance();
-                })
-                .catch((error) => {
-                    console.error("Error processing events:", error);
-                });
-          }
-
-
-        }
-
-
+      var btn = sgCommentSubmitButton();
+      if (btn) {
+        launchShortCodeReplacementFunctions()
+            .then(() => {
+              return new Promise(resolve => setTimeout(resolve, 100));
+            })
+            .then(() => {
+              return dispatchCommentSubmit(btn);
+            })
+            .then(() => {
+              return new Promise(resolve => setTimeout(resolve, 100));
+            })
+            .then(() => {
+              return rubricSaveAndAdvance();
+            })
+            .catch((error) => {
+                console.error("Error processing events:", error);
+            });
+      }
     }
 
     function nextUser() {
@@ -726,53 +813,80 @@
       if (!isSG) {
         return;
       }
-      var src = document.getElementById('x_of_x_students_frd');
-      var observer = new MutationObserver(function() {
-        if (advanceSrc === 'rubric' && typeof config.nextRubricExpanded !== 'undefined' && config.nextRubricExpanded) {
-          openRubric();
-        }
-        advanceSrc = false;
-      });
-      observer.observe(src, {
-        'childList' : true
-      });
-      var iframeHolder = document.getElementById('iframe_holder');
-      if (iframeHolder) {
-        var iframeObserver = new MutationObserver(function() {
-          var iframe = document.getElementById('speedgrader_iframe');
-          if (iframe) {
-            iframe.addEventListener('load', iframeLoaded, false);
+      sgObserveAndInstall('[data-testid="current-student-index"]', 'data-palcsui-nav-observer-installed', function(src) {
+        var observer = new MutationObserver(function() {
+          if (advanceSrc === 'rubric' && typeof config.nextRubricExpanded !== 'undefined' && config.nextRubricExpanded) {
+            openRubric();
           }
+          advanceSrc = false;
         });
-        iframeObserver.observe(iframeHolder, {
-          'childList' : true
+        observer.observe(src, {
+          'childList' : true,
+          'characterData' : true,
+          'subtree' : true
         });
-      }
+      });
+      // The submission preview iframe gets a new src (and is sometimes a
+      // freshly-mounted node) on every student navigation, so re-attach the
+      // 'load' listener whenever a fresh iframe appears, scoped to the
+      // whole document since the iframe lives outside the grading sidebar.
+      sgObserveAndInstall(
+        '#submission-preview-iframe, [data-testid="submission-preview-iframe"]',
+        'data-palcsui-load-installed',
+        function(iframe) {
+          iframe.addEventListener('load', iframeLoaded, false);
+        },
+        document.body
+      );
     }
 
     function openRubric() {
       if (!isSG) {
         return;
       }
-      advanceRubric = true;
-      var rubric = document.getElementById('rubric_full');
-      if (rubric.style.display === 'none') {
-        showRubric();
+      // The rubric toggle button is remounted on every student navigation,
+      // like the rest of the grading panel. The previous version checked
+      // for it exactly once, synchronously, at the instant navigation was
+      // detected (when current-student-index changed) - if React hadn't
+      // re-rendered the new student's toggle button at that precise
+      // moment, the check found nothing and silently gave up, leaving the
+      // rubric closed. The fallback for that (a MutationObserver watching
+      // the button's aria-expanded attribute) never actually helped: it
+      // only fires on a *change* to that attribute, and the normal case
+      // here is the button mounting already collapsed and simply staying
+      // that way - there's no transition to observe, so that fallback
+      // could never catch the common case, which is why this only
+      // happened "sometimes" rather than reliably either way. This
+      // instead waits for the button to actually exist before acting,
+      // whether that's immediate or a moment later.
+      function tryOpen(btn) {
+        if (btn.getAttribute('aria-expanded') === 'false') {
+          btn.dispatchEvent(new Event('click', {
+            'bubbles' : true
+          }));
+        }
       }
-      return;
-    }
-
-    function showRubric() {
-      if (!isSG || !advanceRubric) {
+      var btn = sgRubricToggleButton();
+      if (btn) {
+        tryOpen(btn);
         return;
       }
-      advanceRubric = false;
-      var btn = document.querySelector('#rubric_assessments_list_and_edit_button_holder button.toggle_full_rubric');
-      if (btn) {
-        btn.dispatchEvent(new Event('click', {
-          'bubbles' : true
-        }));
-      }
+      var root = document.querySelector('[data-testid="speedgrader-grading-panel"]') || document.body;
+      var giveUp = setTimeout(function() {
+        observer.disconnect();
+      }, 5000);
+      var observer = new MutationObserver(function() {
+        var found = sgRubricToggleButton();
+        if (found) {
+          clearTimeout(giveUp);
+          observer.disconnect();
+          tryOpen(found);
+        }
+      });
+      observer.observe(root, {
+        'childList' : true,
+        'subtree' : true
+      });
     }
 
     function iframeLoaded(e) {
@@ -1080,8 +1194,7 @@
             'size' : 'small',
             'title' : 'Update scores and advance to the next user'
           });
-          advance.style.marginLeft = '3px';
-          row.appendChild(advance);
+            row.appendChild(advance);
         }
         wrapper.appendChild(row);
       }
@@ -2193,40 +2306,6 @@
     }
     //console.log('addGradePercentage() is running');
 
-    // This never gets called, so commenting it out for now ***
-    /*$(document).ajaxStop(function () {
-      //var students_selectmenu = document.getElementById("students_selectmenu");
-    //students_selectmenu.addEventListener("change", showGradePercentage);
-      showGradePercentage();
-      console.log("ajax has stopped");
-
-    });*/
-
-  //Globals for Speed Grader and msisNav functions
-  var getURLArray = document.URL.split(/\?(.+)?/)[0];
-  var parseURL = getURLArray.split('/');
-  var speed_grader = parseURL[6];
-  var header = document.getElementById('header');
-  var pointPercentNumberFired = false; //NEW for Debugging
-
-  //$(document).ready(function(){setupPercentContainers();}); //ORG (and CURRENT) Working Design, *** trying to remove Jquery, so commenting this out for now ***
-  //window.onload = setupPercentContainers(); //NEW kinda working design paired with above function (not currently using)
-  //window.onload = showGradePercentage(); //ORG Working Design (not currently using)
-  //$(document).ready(function(){showGradePercentage();}); //NEW (and CURRENT) Working Design paired with ORG setupPercentContainers(), *** trying to remove Jquery, so commenting this out for now ***
-
-  // NEW Trying to remove JQuery, so using this loading method instead
-  /*document.onreadystatechange = function () {
-    if (document.readyState === 'complete') {
-        setupPercentContainers();
-        showGradePercentage();
-    }
-  };*/
-
-  // This is a unique alternative, and seems to be working, but perhaps not the best way to do it
-  /*function r(f){/in/.test(document.readyState)?setTimeout(r,9,f):f()}
-  r(function(){setupPercentContainers();showGradePercentage();});*/
-
-
   // NEW Let's stick with this $document.ready, JQuery-less alternative for now.
   function mycallback() {
     setupPercentContainers();
@@ -2247,116 +2326,130 @@
     }
   })();
 
-  //These don't really get used, they're more for options, but I'm leaving them here for now
-  //window.onload = setupPercentContainers();
-  //$(window).on('load', setupPercentContainers);
-  //$(document).ready(function(){setupPercentContainers()});
-  //$(window).on( "load", function() { showGradePercentage(); });
-  //$('#update_history_form').on( 'submit', function() { setTimeout(function(){showGradePercentage();},2000) });
-  //$('#students_selectmenu').on( 'keyup blur keypress change', showGradePercentage);
-  //$("body").on('DOMSubtreeModified', "#x_of_x_students_frd", function() {console.log('changed') });
-
   function setupPercentContainers() {
 
-      if (speed_grader == 'speed_grader') {
+      if (!isSG) {
+        return;
+      }
 
-          var pointValue = document.createElement('div');
-          pointValue.id = 'pointValue';
+      // The grade label ("Grade out of N") and the grade input are both
+      // remounted by React on every student navigation, so (re)install the
+      // percent display and its listeners every time they reappear, rather
+      // than once at page load.
+      sgObserveAndInstall('[data-testid="grade-text"]', 'data-palcsui-percent-installed', function(label) {
+        var pointValue = document.createElement('span');
+        pointValue.id = 'pointValue';
+        pointValue.style.marginLeft = '6px';
 
-          //Commented out next 2 lines because of how Chrome now auto-suggests
-          //form field values...it was covering up the grade percentage - moved it
-          //to var grading_box_points_possible which is above grading box now.
-          //var grade_container = document.getElementById('grade_container');
-          //grade_container.appendChild(pointValue);
+        var pointPercentNumber = document.createElement('span');
+        pointPercentNumber.id = 'pointPercentNumber';
+        pointPercentNumber.innerHTML = '';
 
-          var grading_box_points_possible = document.getElementById('grading-box-points-possible');
-          grading_box_points_possible.appendChild(pointValue);
-
-          var pointPercentNumber = document.createElement('span');
-          pointPercentNumber.id = 'pointPercentNumber';
-          pointPercentNumber.innerHTML = '';
-
-          pointValue.appendChild(pointPercentNumber);
-
-          //pointPercentNumberFired = true; //NEW for Debugging
-
-          //var gradingBoxExtended = document.getElementById("grading-box-extended");
-          //gradingBoxExtended.addEventListener("change", showGradePercentage);
-
-          //var students_selectmenu = document.getElementById("students_selectmenu");
-      //students_selectmenu.addEventListener("change", showGradePercentage);
-
-      //$('#students_selectmenu').on( 'keyup blur keypress change click mousedown', showGradePercentage);
-
-      // Trying to remove JQuery, so commenting the following three eventListeners out for now
-      //$('#grading-box-extended').on('keyup blur keypress change', showGradePercentage); //***
-      //$('#next-student-button').on('click mousedown', showGradePercentage); //***
-      //$('#prev-student-button').on('click mousedown', showGradePercentage); //***
-
-      // New way of adding the eventListeners without JQuery
-      ['keyup','blur','keypress','change'].forEach( evt =>
-        document.getElementById("grading-box-extended").addEventListener(evt, showGradePercentage, false)
-      );
-
-      ['click','mousedown','ontouchstart'].forEach( evt =>
-        document.getElementById("next-student-button").addEventListener(evt, showGradePercentage, false)
-      );
-
-      ['click','mousedown','ontouchstart'].forEach( evt =>
-        document.getElementById("prev-student-button").addEventListener(evt, showGradePercentage, false)
-      );
-
-
-      //Setup mutation observer on the student list to fire showGradePercentage() on student change via student list
-      const studentListContainer = document.getElementById("combo_box_container");
-      // Callback function when student list changes
-      function callback(mutationRecord, observer) {
+        pointValue.appendChild(pointPercentNumber);
+        label.parentElement.appendChild(pointValue);
 
         showGradePercentage();
-        //console.log('student list changed');
-        //observer.disconnect();
-      }
+      });
 
-      // Create a new instance of MutationObserver with callback in params
-      const observer = new MutationObserver(callback);
+      sgObserveAndInstall('[data-testid="grade-input"]', 'data-palcsui-percent-listeners', function(input) {
+        ['keyup', 'blur', 'keypress', 'change', 'input'].forEach(evt =>
+          input.addEventListener(evt, showGradePercentage, false)
+        );
+      });
 
-      const config = {
-        subtree: true,
-        childList: true
-      };
+      // Recompute on next/prev navigation. These buttons keep their ids
+      // across student navigation (unlike the grade input/rubric panel), so
+      // a one-time listener attachment is safe here.
+      var next = sgNextStudentButton();
+      var prev = sgPrevStudentButton();
+      ['click', 'mousedown', 'ontouchstart'].forEach(evt => {
+        if (next) {
+          next.addEventListener(evt, showGradePercentage, false);
+        }
+        if (prev) {
+          prev.addEventListener(evt, showGradePercentage, false);
+        }
+      });
 
-      // When everything is ready, we just observe our target (studentListContainer)
-      observer.observe(studentListContainer, config);
+      // Also recompute when the student changes via the student drilldown
+      // dropdown (not just next/prev), by watching the "current-student-index"
+      // counter text (replaces the old #combo_box_container mutation watch).
+      sgObserveAndInstall('[data-testid="current-student-index"]', 'data-palcsui-percent-nav-installed', function(studentIndexEl) {
+        var observer = new MutationObserver(function() {
+          showGradePercentage();
+        });
+        observer.observe(studentIndexEl, {
+          subtree: true,
+          childList: true,
+          characterData: true
+        });
+      });
 
-      }
+      // Recompute after a rubric save. Submitting the rubric assessment
+      // populates the grade box directly via React state, without firing
+      // any of the native input/change/keyup events the listeners above
+      // rely on - so the percentage display never updated until you
+      // navigated away and back (which recalculates once on remount).
+      // graded-students-count only updates once a grade save has actually
+      // completed, so it's a reliable trigger for "something just got
+      // saved, recompute" regardless of whether that save came from the
+      // grade box directly or from the rubric.
+      sgObserveAndInstall('[data-testid="graded-students-count"]', 'data-palcsui-percent-gradedcount-installed', function(gradedCountEl) {
+        var observer = new MutationObserver(function() {
+          showGradePercentage();
+        });
+        observer.observe(gradedCountEl, {
+          subtree: true,
+          childList: true,
+          characterData: true
+        });
+      });
+
+      // The graded-students-count watcher above misses a real case: if the
+      // student was already counted as graded (e.g. re-grading, or testing
+      // repeatedly), that counter's text doesn't change on save at all, so
+      // no mutation ever fires there. And React sets the grade input's
+      // value through its own internal property setter, not the HTML
+      // value attribute, so a MutationObserver watching the input's
+      // attributes wouldn't catch the change either - there's no DOM
+      // mutation to observe. Attaching directly to the rubric's own Submit
+      // Assessment button and polling a few times afterward isn't elegant,
+      // but it's tied to an event we know for certain just happened,
+      // rather than trying to detect a side effect that may not produce
+      // any observable DOM change at all.
+      sgObserveAndInstall('[data-testid="save-rubric-assessment-button"]', 'data-palcsui-percent-rubric-installed', function(btn) {
+        btn.addEventListener('click', function() {
+          [150, 400, 800, 1500, 3000].forEach(function(delay) {
+            setTimeout(showGradePercentage, delay);
+          });
+        });
+      });
   }
 
   function showGradePercentage() {
 
-      if (speed_grader == 'speed_grader') {
+      if (!isSG) {
+        return;
+      }
 
-          /*if (pointPercentNumberFired == false){ //NEW Used for Debugging
-              console.log('setupPercentContainers() launched secondary and pointPercentNumberFired = ' + pointPercentNumberFired);
-              setupPercentContainers();
-              console.log('setupPercentContainers() launched secondary and pointPercentNumberFired = ' + pointPercentNumberFired);
-              pointPercentNumberFired == true;
-          } console.log('continuing function ' + pointPercentNumberFired);*/
+      // Look the display element up by id rather than relying on the
+      // pointPercentNumber variable from setupPercentContainers's closure -
+      // that closure never actually included this function in the original
+      // script, so the old code threw a ReferenceError here on every call.
+      var pointPercentNumber = document.getElementById('pointPercentNumber');
+      if (!pointPercentNumber) {
+        return;
+      }
 
-          var studentGrade = parseFloat(document.getElementById('grading-box-extended').value, 10);
-          var assignmentValue = parseFloat(document.getElementById('grade_container').innerText.split(/(\d+)/g)[1], 10);
-          var rawGradePercent = studentGrade / assignmentValue;
-          var gradePercent = (rawGradePercent * 100).toFixed(2) + ' %';
+      var input = sgGradeInput();
+      var studentGrade = input ? parseFloat(input.value, 10) : NaN;
+      var assignmentValue = sgPointsPossible();
+      var rawGradePercent = studentGrade / assignmentValue;
 
-          if (isNaN(rawGradePercent)) {
-
-              pointPercentNumber.innerHTML = '0 %';
-
-          } else {
-
-          pointPercentNumber.innerHTML = gradePercent;
-          //console.log('Recalculating');
-
-          }
+      if (isNaN(rawGradePercent)) {
+        pointPercentNumber.innerHTML = '0 %';
+      } else {
+        pointPercentNumber.innerHTML = (rawGradePercent * 100).toFixed(2) + ' %';
       }
   }
 
@@ -2365,725 +2458,183 @@
 
 function addSgStudentNameGreeting() {
   if (typeof config.addSgStudentNameGreeting !== 'undefined' && !config.addSgStudentNameGreeting) {
-    return;
+    return {
+      replaceSgStudentNameShortCode: () => Promise.resolve(),
+      replaceSgLessonNameShortCode: () => Promise.resolve(),
+      launchShortCodeReplacementFunctions: () => Promise.resolve()
+    };
   }
   //console.log('addSgStudentNameGreeting() is running');
 
-  //Globals for Speed Grader and msisNav functions
-  var getURLArray = document.URL.split(/\?(.+)?/)[0];
-  var parseURL = getURLArray.split('/');
-  var speed_grader = parseURL[6];
-  var header = document.getElementById('header');
-  var pointPercentNumberFired = false; //NEW for Debugging
-  var hasRubric = document.getElementById('rubric_full');
-
-  function setup(){
-    //$(document).ready(function(){setupAddSgStudentNameGreetingContainers();}); //ORG Working Design with JQuery, trying to remove JQuery, so commenting out for now ***
-
-    // NEW way of loading without JQuery
-    // UPDATE: No need for the document.onreadystatechange function here, we just need to check
-    // the document.readyState property to see if the page is loaded. See updated version below
-    /*document.onreadystatechange = function () {
-      if (document.readyState === 'complete') {
-          setupAddSgStudentNameGreetingContainers();
-      }
-    };*/
-
-    // UPDATE: No need for the document.onreadystatechange function here, we just need to check for
-    // the document.readyState status of interactive, or complete.
-    /*if (document.readyState === 'interactive' || document.readyState === 'complete') {
-        setupAddSgStudentNameGreetingContainers();
-    }*/
-
-    //console.log('document.readyState = ' + document.readyState);
-
-    // Check if the page is loaded, if not, add a listener to the document.readystatechange event
-    // to watch for the page to fully load.
+  function setup() {
     if (document.readyState === 'complete') {
       setupAddSgStudentNameGreetingContainers();
-    } else if (document.readyState !== 'complete') {
-        document.addEventListener('readystatechange', function () {
-          if (document.readyState === 'complete') {
-            setupAddSgStudentNameGreetingContainers();
-          }
+    } else {
+      document.addEventListener('readystatechange', function () {
+        if (document.readyState === 'complete') {
+          setupAddSgStudentNameGreetingContainers();
+        }
       });
     }
 
     function setupAddSgStudentNameGreetingContainers() {
 
-        if (speed_grader == 'speed_grader') {
-
-          // ORG var when it was located in the form (moved it out of the form)
-          //var AddSgStudentNameGreetingLink = `<span class="fOyUs_bGBk dJCgj_bGBk" id="SgGreetingContainer"><div class="fOyUs_bGBk fOyUs_desw" style="padding: 0px 0px 0px 0.5rem;"><a href="JavaScript:void(0);" id="SgGreeting" style="" title="Add Student Name Greeting" alt="Add Student Name Greeting"><span>😬</span></a></div></span>`;
-
-          // Had to adjust the location of the variable
-          // The form it was originally enclosed in stopped working.
-          //var SgTextArea = document.getElementById('speed_grader_comment_textarea_mount_point');
-          //SgTextArea.firstElementChild.innerHTML += AddSgStudentNameGreetingLink;
-
-          var AddSgStudentNameGreetingLink = `<span id="SgGreetingContainer" style="padding: 0px 0px 0px 0.1rem;"><a href="JavaScript:void(0);" id="SgGreeting" style="text-decoration: none;" title="In the Assignments Comments text box, add a greeting and the first name of the current student" alt="In the Assignments Comments text box, add a greeting and the first name of the current student"><span>😬</span></a></span>`;
-
-          var AddSgStudentNameSalutationLink = `<span id="SgSalutationContainer" style="padding: 0px 0px 0px 0.1rem;"><a href="JavaScript:void(0);" id="SgSalutation" style="text-decoration: none;" title="In the Assignments Comments text box, add the first name of the current student and a salutation" alt="In the Assignments Comments text box, add the first name of the current student and a salutation"><span>😃</span></a></span>`;
-
-          var AddSgStudentNameShortCodeLink = `<span id="SgStudentNameShortCodeContainer" style="padding: 0px 0px 0px 0.1rem;"><a href="JavaScript:void(0);" id="SgStudentNameShortCode" style="text-decoration: none;" title="In the Assignments Comments text box, replace the [[StudentName]] Short Code with the first name of the current student" alt="In the Assignments Comments text box, replace the [[StudentName]] Short Code with the first name of the current student"><span>🤓</span></a></span>`;
-
-          var AddSgLessonNameShortCodeLink = `<span id="SgLessonNameShortCodeContainer" style="padding: 0px 0px 0px 0.1rem;"><a href="JavaScript:void(0);" id="SgLessonNameShortCode" style="text-decoration: none;" title="In the Assignments Comments text box, replace the [[LessonName]] Short Code with the title of the current lesson" alt="In the Assignments Comments text box, replace the [[LessonName]] Short Code with the title of the current lesson"><span>📄</span></a></span>`;
-
-          const nameSpAdvance = document.querySelectorAll(("." + namespace + "_next"));
-          //console.log(nameSpAdvance)
-
-          //console.log('Active and true');
-
-          if (!hasRubric) {
-
-            document.querySelectorAll('#rightside_inner .content_box h2')[1].innerHTML += AddSgLessonNameShortCodeLink;
-
-            document.querySelectorAll('#rightside_inner .content_box h2')[1].innerHTML += AddSgStudentNameShortCodeLink;
-
-            document.querySelectorAll('#rightside_inner .content_box h2')[1].innerHTML += AddSgStudentNameGreetingLink;
-
-            document.querySelectorAll('#rightside_inner .content_box h2')[1].innerHTML += AddSgStudentNameSalutationLink;
-
-            document.getElementById("SgLessonNameShortCode").addEventListener("click", replaceSgLessonNameShortCode);
-
-            document.getElementById("SgStudentNameShortCode").addEventListener("click", replaceSgStudentNameShortCode);
-
-            document.getElementById("SgGreeting").addEventListener("click", addSgGreeting);
-
-            document.getElementById("SgSalutation").addEventListener("click", addSgSalutation);
-
-            //document.getElementById("next-student-button").addEventListener("mouseover", launchShortCodeReplacementFunctions);
-
-            //document.getElementById("prev-student-button").addEventListener("mouseover", launchShortCodeReplacementFunctions);
-
-            //document.getElementById("combo_box_container").addEventListener("mouseover", launchShortCodeReplacementFunctions);
-
-            ['mouseover','ontouchstart','blur','click','focus'].forEach( evt =>
-              document.getElementById("next-student-button").addEventListener(evt, launchShortCodeReplacementFunctions, false)
-            );
-
-            ['mouseover','ontouchstart','blur','click','focus'].forEach( evt =>
-              document.getElementById("prev-student-button").addEventListener(evt, launchShortCodeReplacementFunctions, false)
-            );
-
-            ['mouseover','ontouchstart','blur','click','focus'].forEach( evt =>
-              document.getElementById("combo_box_container").addEventListener(evt, launchShortCodeReplacementFunctions, false)
-            );
-
-            ['mouseover','ontouchstart','blur','click','focus'].forEach( evt =>
-              document.getElementById("comment_submit_button").addEventListener(evt, launchShortCodeReplacementFunctions, false)
-            );
-
-            /*['mouseover','ontouchstart','blur','click','focus'].forEach( evt =>
-              document.getElementById("grading-box-extended").addEventListener(evt, launchShortCodeReplacementFunctions, false)
-            );*/
-
-            //const nameSpAdvance = document.querySelectorAll(("." + namespace + "_next"));
-            for (let i = 0; i < nameSpAdvance.length; i++) {
-              nameSpAdvance[i].addEventListener('mouseover', launchShortCodeReplacementFunctions, false);
-              nameSpAdvance[i].addEventListener('ontouchstart', launchShortCodeReplacementFunctions, false);
-              nameSpAdvance[i].addEventListener('blur', launchShortCodeReplacementFunctions, false);
-              nameSpAdvance[i].addEventListener('click', launchShortCodeReplacementFunctions, false);
-              nameSpAdvance[i].addEventListener('focus', launchShortCodeReplacementFunctions, false);
-            };
-
-            // Function to observe changes in the student_id parameter
-            let lastStudentId = new URL(window.location.href).searchParams.get('student_id');
-
-            // Function to handle URL changes and reattach event listeners
-            function handleUrlChange() {
-                const newStudentId = new URL(window.location.href).searchParams.get('student_id');
-                if (newStudentId !== lastStudentId) {
-                    console.log(`student_id changed to ${newStudentId}`);
-                    lastStudentId = newStudentId;
-
-                    // Reattach event listeners after a delay
-                    setTimeout(function() {
-                        addCommentLibraryButtonListener();
-                    }, 500);
-                }
-            }
-
-            // Function to observe changes in the student_id parameter using the popstate event
-            function observeUrlChanges() {
-                // Listen for popstate events (back/forward navigation)
-                window.addEventListener('popstate', handleUrlChange);
-
-                // Also intercept changes made via pushState or replaceState
-                const originalPushState = history.pushState;
-                const originalReplaceState = history.replaceState;
-
-                history.pushState = function(...args) {
-                    originalPushState.apply(this, args);
-                    handleUrlChange(); // Check URL after pushState
-                };
-
-                history.replaceState = function(...args) {
-                    originalReplaceState.apply(this, args);
-                    handleUrlChange(); // Check URL after replaceState
-                };
-            }
-
-            let isCommentLibraryListenerAttached = false;  // Flag to track if listener is already attached
-
-            // Function to check and add the listener if it is not already attached
-            function checkAndAddCommentLibraryListener() {
-                if (!isCommentLibraryListenerAttached) {
-                    console.log('Listener not attached, attaching it now.');
-                    addCommentLibraryButtonListener();
-                    isCommentLibraryListenerAttached = true;  // Set the flag to true after attaching the listener
-                } else {
-                    console.log('Listener already attached.');
-                }
-            }
-
-            // Function to add event listeners to the div elements inside the library area
-            function addListenersToLibraryComments() {
-              // Find all div elements inside the span with data-testid="library-comment-area"
-              const commentDivs = document.querySelectorAll('[data-testid="library-comment-area"] [data-testid="comment-library"]');
-
-              // Loop through each div and add the click event listener
-              commentDivs.forEach(function(div) {
-                  div.addEventListener('click', handleCommentDivClick);
-              });
-            }
-
-            // Function to handle the click event on the comment divs
-            function handleCommentDivClick() {
-              console.log('Comment div clicked, triggering shortcode replacement.');
-
-              // Call your function with a 100ms delay when any of the divs are clicked
-              setTimeout(function() {
-                  launchShortCodeReplacementFunctions();
-              }, 500);
-
-              // Since the DOM might be destroyed and recreated, re-run the setup
-              console.log('Re-running setup to handle DOM recreation.');
-              setTimeout(initializeEventListeners, 500);  // Delay to allow DOM to be recreated before reattaching listeners
-            }
-
-            // Function to add a listener to the comment library button and trigger listeners when it is clicked
-            function addCommentLibraryButtonListener() {
-              // Find the button with data-testid="comment-library-link"
-              const commentLibraryButton = document.querySelector('[data-testid="comment-library-link"]');
-
-              // Add a click event listener to the button to open the drawer
-              if (commentLibraryButton) {
-                  commentLibraryButton.addEventListener('click', function() {
-                      console.log('Comment library button clicked, adding event listeners to comment divs.');
-
-                      // Wait for the drawer to open, then add listeners to the comment divs
-                      setTimeout(function() {
-                          addListenersToLibraryComments();
-                      }, 300); // Adjust the delay if necessary
-                  });
-              } else {
-                  console.error('Comment library button not found.');
-              }
-            }
-
-            // Function to initialize event listeners for both button and comment divs
-            function initializeEventListeners() {
-              console.log('Initializing event listeners.');
-              
-              // Add event listener to the button
-              addCommentLibraryButtonListener();
-
-              // Add event listeners to the comment divs (in case they are present from the start)
-              addListenersToLibraryComments();
-            }
-
-            // Attach a hover event listener to check if the click listener is attached
-            const commentLibraryButton = document.querySelector('[data-testid="comment-library-link"]');
-            if (commentLibraryButton) {
-                commentLibraryButton.addEventListener('mouseover', checkAndAddCommentLibraryListener);
-            } else {
-                console.error('Comment library button not found for hover check.');
-            }
-
-            // Initial setup when the DOM is loaded
-            console.log('DOM loaded, setting up event listeners.');
-            initializeEventListeners();
-
-            // Start observing URL changes
-            observeUrlChanges();
-
-
-
-          } else if (hasRubric) {
-
-            document.querySelectorAll('#rightside_inner .content_box h2')[4].innerHTML += AddSgLessonNameShortCodeLink;
-
-            document.querySelectorAll('#rightside_inner .content_box h2')[4].innerHTML += AddSgStudentNameShortCodeLink;
-
-            document.querySelectorAll('#rightside_inner .content_box h2')[4].innerHTML += AddSgStudentNameGreetingLink;
-
-            document.querySelectorAll('#rightside_inner .content_box h2')[4].innerHTML += AddSgStudentNameSalutationLink;
-
-            document.getElementById("SgLessonNameShortCode").addEventListener("click", replaceSgLessonNameShortCode);
-
-            document.getElementById("SgStudentNameShortCode").addEventListener("click", replaceSgStudentNameShortCode);
-
-            document.getElementById("SgGreeting").addEventListener("click", addSgGreeting);
-
-            document.getElementById("SgSalutation").addEventListener("click", addSgSalutation);
-
-            //document.getElementById("next-student-button").addEventListener("mouseover", launchShortCodeReplacementFunctions);
-
-            //document.getElementById("prev-student-button").addEventListener("mouseover", launchShortCodeReplacementFunctions);
-
-            //document.getElementById("combo_box_container").addEventListener("mouseover", launchShortCodeReplacementFunctions);
-
-            //var rubricSaveButton = document.querySelector('div#rubric_holder button.save_rubric_button');
-
-            ['mouseover','ontouchstart','blur','click','focus'].forEach( evt =>
-              document.querySelector('div#rubric_holder button.save_rubric_button').addEventListener(evt, launchShortCodeReplacementFunctions, false)
-            );
-
-            ['mouseover','ontouchstart','blur','click','focus'].forEach( evt =>
-              document.getElementById("next-student-button").addEventListener(evt, launchShortCodeReplacementFunctions, false)
-            );
-
-            ['mouseover','ontouchstart','blur','click','focus'].forEach( evt =>
-              document.getElementById("prev-student-button").addEventListener(evt, launchShortCodeReplacementFunctions, false)
-            );
-
-            ['mouseover','ontouchstart','blur','click','focus'].forEach( evt =>
-              document.getElementById("combo_box_container").addEventListener(evt, launchShortCodeReplacementFunctions, false)
-            );
-
-            ['mouseover','ontouchstart','blur','click','focus'].forEach( evt =>
-              document.getElementById("comment_submit_button").addEventListener(evt, launchShortCodeReplacementFunctions, false)
-            );
-
-            /*['mouseover','ontouchstart','blur','click','focus'].forEach( evt =>
-              document.getElementById("grading-box-extended").addEventListener(evt, launchShortCodeReplacementFunctions, false)
-            );*/
-
-            //const nameSpAdvance = document.querySelectorAll(("." + namespace + "_next"));
-            // Original code
-            for (let i = 0; i < nameSpAdvance.length; i++) {
-              nameSpAdvance[i].addEventListener('mouseover', launchShortCodeReplacementFunctions, false);
-              nameSpAdvance[i].addEventListener('ontouchstart', launchShortCodeReplacementFunctions, false);
-              nameSpAdvance[i].addEventListener('blur', launchShortCodeReplacementFunctions, false);
-              nameSpAdvance[i].addEventListener('click', launchShortCodeReplacementFunctions, false);
-              nameSpAdvance[i].addEventListener('focus', launchShortCodeReplacementFunctions, false);
-            };
-
-            // The following code block can be helpful to prevent the short code replacement functions 
-            // from being called multiple times and therefore causing errors.
-            // I'm reverting back to the original code for now. Because I addressed the issue in a different way.
-            // If the original code is causing issues, we can move to the following code block. - DWS
-
-            /*let isProcessing = false;
-
-            for (let i = 0; i < nameSpAdvance.length; i++) {
-                // Mouseover event to show the short code conversion
-                nameSpAdvance[i].addEventListener('mouseover', () => {
-                    if (isProcessing) return; // Prevent re-execution if already processing
-                    isProcessing = true;
-
-                    launchShortCodeReplacementFunctions()
-                        .then(() => {
-                            console.log("Short codes replaced on mouseover");
-                        })
-                        .catch((error) => {
-                            console.error("Error processing mouseover event:", error);
-                        })
-                        .finally(() => {
-                            isProcessing = false; // Reset the flag after processing
-                        });
-                }, false);
-
-                // Click event to perform the final actions
-                nameSpAdvance[i].addEventListener('click', () => {
-                    if (isProcessing) return; // Prevent re-execution if already processing
-                    isProcessing = true;
-
-                    launchShortCodeReplacementFunctions()
-                        .then(() => {
-                            console.log("Short codes replaced on click");
-                        })
-                        .catch((error) => {
-                            console.error("Error processing click event:", error);
-                        })
-                        .finally(() => {
-                            isProcessing = false; // Reset the flag after processing
-                        });
-                }, false);
-            }*/
-
-            // Function to observe changes in the student_id parameter
-            let lastStudentId = new URL(window.location.href).searchParams.get('student_id');
-
-            // Function to handle URL changes and reattach event listeners
-            function handleUrlChange() {
-                const newStudentId = new URL(window.location.href).searchParams.get('student_id');
-                if (newStudentId !== lastStudentId) {
-                    console.log(`student_id changed to ${newStudentId}`);
-                    lastStudentId = newStudentId;
-
-                    // Reattach event listeners after a delay
-                    setTimeout(function() {
-                        addCommentLibraryButtonListener();
-                    }, 500);
-                }
-            }
-
-            // Function to observe changes in the student_id parameter using the popstate event
-            function observeUrlChanges() {
-                // Listen for popstate events (back/forward navigation)
-                window.addEventListener('popstate', handleUrlChange);
-
-                // Also intercept changes made via pushState or replaceState
-                const originalPushState = history.pushState;
-                const originalReplaceState = history.replaceState;
-
-                history.pushState = function(...args) {
-                    originalPushState.apply(this, args);
-                    handleUrlChange(); // Check URL after pushState
-                };
-
-                history.replaceState = function(...args) {
-                    originalReplaceState.apply(this, args);
-                    handleUrlChange(); // Check URL after replaceState
-                };
-            }
-
-            let isCommentLibraryListenerAttached = false;  // Flag to track if listener is already attached
-
-            // Function to check and add the listener if it is not already attached
-            function checkAndAddCommentLibraryListener() {
-                if (!isCommentLibraryListenerAttached) {
-                    console.log('Listener not attached, attaching it now.');
-                    addCommentLibraryButtonListener();
-                    isCommentLibraryListenerAttached = true;  // Set the flag to true after attaching the listener
-                } else {
-                    console.log('Listener already attached.');
-                }
-            }
-
-            // Function to add event listeners to the div elements inside the library area
-            function addListenersToLibraryComments() {
-              // Find all div elements inside the span with data-testid="library-comment-area"
-              const commentDivs = document.querySelectorAll('[data-testid="library-comment-area"] [data-testid="comment-library"]');
-
-              // Loop through each div and add the click event listener
-              commentDivs.forEach(function(div) {
-                  div.addEventListener('click', handleCommentDivClick);
-              });
-            }
-
-            // Function to handle the click event on the comment divs
-            function handleCommentDivClick() {
-              console.log('Comment div clicked, triggering shortcode replacement.');
-
-              // Call your function with a 100ms delay when any of the divs are clicked
-              setTimeout(function() {
-                  launchShortCodeReplacementFunctions();
-              }, 500);
-
-              // Since the DOM might be destroyed and recreated, re-run the setup
-              console.log('Re-running setup to handle DOM recreation.');
-              setTimeout(initializeEventListeners, 500);  // Delay to allow DOM to be recreated before reattaching listeners
-            }
-
-            // Function to add a listener to the comment library button and trigger listeners when it is clicked
-            function addCommentLibraryButtonListener() {
-              // Find the button with data-testid="comment-library-link"
-              const commentLibraryButton = document.querySelector('[data-testid="comment-library-link"]');
-
-              // Add a click event listener to the button to open the drawer
-              if (commentLibraryButton) {
-                  commentLibraryButton.addEventListener('click', function() {
-                      console.log('Comment library button clicked, adding event listeners to comment divs.');
-
-                      // Wait for the drawer to open, then add listeners to the comment divs
-                      setTimeout(function() {
-                          addListenersToLibraryComments();
-                      }, 300); // Adjust the delay if necessary
-                  });
-              } else {
-                  console.error('Comment library button not found.');
-              }
-            }
-
-            // Function to initialize event listeners for both button and comment divs
-            function initializeEventListeners() {
-              console.log('Initializing event listeners.');
-              
-              // Add event listener to the button
-              addCommentLibraryButtonListener();
-
-              // Add event listeners to the comment divs (in case they are present from the start)
-              addListenersToLibraryComments();
-            }
-
-            // Attach a hover event listener to check if the click listener is attached
-            const commentLibraryButton = document.querySelector('[data-testid="comment-library-link"]');
-            if (commentLibraryButton) {
-                commentLibraryButton.addEventListener('mouseover', checkAndAddCommentLibraryListener);
-            } else {
-                console.error('Comment library button not found for hover check.');
-            }
-
-            // Function to simulate your short code replacement logic
-            //function launchShortCodeReplacementFunctions() {
-            //  console.log("ShortCode Replacement Function Executed");
-              // Your actual short code replacement logic goes here
-            //}
-
-            // Initial setup when the DOM is loaded
-            console.log('DOM loaded, setting up event listeners.');
-            initializeEventListeners();
-
-            // Start observing URL changes
-            observeUrlChanges();
-
-
-
-          }
-
-        }
-    }
-
-    function addSgGreeting() {
-      // TODO: Rewrite the replacement logic to follow the replaceSgStudentNameShortCode() code syntax. - DWS
-
-      if (speed_grader == 'speed_grader') {
-
-        //var studentFullName = document.getElementById('students_selectmenu-button').innerText
-        var studentFullName = document.querySelector('#students_selectmenu-button .ui-selectmenu-status .ui-selectmenu-item-header').innerText
-
-
-        //console.log(studentFullName)
-
-        var studentFullNameArray = studentFullName.split(/[ ]+/);
-        //var studentFullNameArray = studentFullName.split(" "); //Both ways work
-
-        //console.log(studentFullNameArray)
-
-        var studentFirstName = studentFullNameArray[0];
-
-        //console.log(studentFirstName)
-
-
-        // #speed_grader_comment_textarea_mount_point
-        // #speed_grader_comment_textarea
-
-
-        var commentBoxTextArea = document.getElementById('speed_grader_comment_textarea')
-        var comment_rce_textarea_ifr = document.getElementById("comment_rce_textarea_ifr");
-
-        if (commentBoxTextArea){
-
-          // Basic add
-          // commentBoxTextArea.value += studentFirstName
-
-          var commentBoxTextAreaValue = commentBoxTextArea.value
-
-          var greeting = "Hi " + studentFirstName + ",\n\n"
-
-          var greetingAndComments = greeting + commentBoxTextAreaValue
-
-          commentBoxTextArea.value = greetingAndComments
-
-
-        } else if (comment_rce_textarea_ifr) {
-
-          var iframeDocContent = comment_rce_textarea_ifr.contentDocument || comment_rce_textarea_ifr.contentWindow.document;
-          var tinymceElement = iframeDocContent.getElementById("tinymce");
-          var tinymceValue = tinymceElement ? tinymceElement.innerHTML : null;
-
-
-          var greeting = "<p>Hi " + studentFirstName + ",</p>"
-
-          var greetingAndComments = greeting + tinymceValue
-
-          tinymceElement.innerHTML = greetingAndComments;
-          //tinymceElement.dispatchEvent(new Event('input', {'bubbles' : true}));
-          tinymceElement.dispatchEvent(new Event('input'));
-          //setTimeout(() => tinymceElement.dispatchEvent(new Event('input')), 10);
-
-        }
-
-
+      if (!isSG) {
+        return;
       }
-    }
 
-    function addSgSalutation() {
-      // TODO: Rewrite the replacement logic to follow the replaceSgStudentNameShortCode() code syntax. - DWS
+      var AddSgStudentNameGreetingLink = `<span id="SgGreetingContainer" style="padding: 0px 0px 0px 0.1rem;"><a href="JavaScript:void(0);" id="SgGreeting" style="text-decoration: none;" title="In the Assignments Comments text box, add a greeting and the first name of the current student" alt="In the Assignments Comments text box, add a greeting and the first name of the current student"><span>😬</span></a></span>`;
 
-      if (speed_grader == 'speed_grader') {
+      var AddSgStudentNameSalutationLink = `<span id="SgSalutationContainer" style="padding: 0px 0px 0px 0.1rem;"><a href="JavaScript:void(0);" id="SgSalutation" style="text-decoration: none;" title="In the Assignments Comments text box, add the first name of the current student and a salutation" alt="In the Assignments Comments text box, add the first name of the current student and a salutation"><span>😃</span></a></span>`;
 
-        //var studentFullName = document.getElementById('students_selectmenu-button').innerText
-        var studentFullName = document.querySelector('#students_selectmenu-button .ui-selectmenu-status .ui-selectmenu-item-header').innerText
+      var AddSgStudentNameShortCodeLink = `<span id="SgStudentNameShortCodeContainer" style="padding: 0px 0px 0px 0.1rem;"><a href="JavaScript:void(0);" id="SgStudentNameShortCode" style="text-decoration: none;" title="In the Assignments Comments text box, replace the [[StudentName]] Short Code with the first name of the current student" alt="In the Assignments Comments text box, replace the [[StudentName]] Short Code with the first name of the current student"><span>🤓</span></a></span>`;
 
+      var AddSgLessonNameShortCodeLink = `<span id="SgLessonNameShortCodeContainer" style="padding: 0px 0px 0px 0.1rem;"><a href="JavaScript:void(0);" id="SgLessonNameShortCode" style="text-decoration: none;" title="In the Assignments Comments text box, replace the [[LessonName]] Short Code with the title of the current lesson" alt="In the Assignments Comments text box, replace the [[LessonName]] Short Code with the title of the current lesson"><span>📄</span></a></span>`;
 
-        //console.log(studentFullName)
+      // The "Assignment Comments" header (data-testid="comments-label") is
+      // present whether or not the assignment has a rubric, so - unlike the
+      // old classic-UI code, which had two nearly-identical branches keyed
+      // off document.getElementById('rubric_full') - one injection path
+      // now covers both cases.
+      sgObserveAndInstall('[data-testid="comments-label"]', 'data-palcsui-greeting-installed', function(label) {
+        var heading = label.closest('h2') || label;
+        heading.insertAdjacentHTML('beforeend',
+          AddSgLessonNameShortCodeLink +
+          AddSgStudentNameShortCodeLink +
+          AddSgStudentNameGreetingLink +
+          AddSgStudentNameSalutationLink
+        );
 
-        var studentFullNameArray = studentFullName.split(/[ ]+/);
-        //var studentFullNameArray = studentFullName.split(" "); //Both ways work
+        document.getElementById('SgLessonNameShortCode').addEventListener('click', replaceSgLessonNameShortCode);
+        document.getElementById('SgStudentNameShortCode').addEventListener('click', replaceSgStudentNameShortCode);
+        document.getElementById('SgGreeting').addEventListener('click', addSgGreeting);
+        document.getElementById('SgSalutation').addEventListener('click', addSgSalutation);
+      });
 
-        //console.log(studentFullNameArray)
-
-        var studentFirstName = studentFullNameArray[0];
-
-        //console.log(studentFirstName)
-
-
-        // #speed_grader_comment_textarea_mount_point
-        // #speed_grader_comment_textarea
-
-
-        var commentBoxTextArea = document.getElementById('speed_grader_comment_textarea');
-        var comment_rce_textarea_ifr = document.getElementById("comment_rce_textarea_ifr");
-
-        if (commentBoxTextArea){
-
-          // Basic add
-          // commentBoxTextArea.value += studentFirstName
-
-          var commentBoxTextAreaValue = commentBoxTextArea.value
-
-          //var salutation = " " + studentFirstName + "!" // Space or no space???
-          var salutation = studentFirstName + "!"
-
-          var salutationAndComments = commentBoxTextAreaValue + salutation
-
-          commentBoxTextArea.value = salutationAndComments
-
-
-        } else if (comment_rce_textarea_ifr) {
-
-          var iframeDocContent = comment_rce_textarea_ifr.contentDocument || comment_rce_textarea_ifr.contentWindow.document;
-          var tinymceElement = iframeDocContent.getElementById("tinymce");
-          var tinymceValue = tinymceElement ? tinymceElement.innerHTML : null;
-
-          //var salutation = " " + studentFirstName + "!" // Space or no space???
-          var salutation = studentFirstName + "!";
-
-          if (tinymceElement) {
-            // Function to insert text at the current cursor position
-            function insertTextAtCursor(text) {
-              //tinymceElement.focus();  // Focus on the iframe to ensure cursor is active
-              // Removing the focus call hack because canvas finally fixed their trash code and now the keyboard shortcuts are working
-      
-              // Get the current selection from the iframe document
-              const selection = iframeDocContent.getSelection();
-              
-              if (!selection.rangeCount) return;
-      
-              const range = selection.getRangeAt(0);  // Get the range (cursor position)
-              range.deleteContents();  // Remove any selected content (if any)
-      
-              // Create a text node with the string you want to insert
-              const textNode = iframeDocContent.createTextNode(text);
-      
-              // Insert the text node at the current cursor position
-              range.insertNode(textNode);
-      
-              // Move the cursor after the inserted text
-              range.setStartAfter(textNode);
-              range.setEndAfter(textNode);
-      
-              // Clear any selection and update the range position
-              selection.removeAllRanges();
-              selection.addRange(range);
-            }
-      
-            // Example: Use this function to insert your string at the cursor after 5 seconds
-            //setTimeout(function () {
-            //  insertTextAtCursor(salutation);
-            //}, 5000);
-            insertTextAtCursor(salutation);
-          }
-
-          //var salutationAndComments = tinymceValue + salutation;
-
-          //tinymceElement.innerHTML = salutationAndComments;
-          //tinymceElement.dispatchEvent(new Event('input', {'bubbles' : true}));
-          tinymceElement.dispatchEvent(new Event('input'));
-          //setTimeout(() => tinymceElement.dispatchEvent(new Event('input')), 10);
-
+      // Pre-replace short codes on hover/focus/click of anything that might
+      // submit or advance, so a manual click on Canvas's own Submit/Save
+      // buttons (not just our injected "advance" buttons) still gets the
+      // short codes swapped in first.
+      var triggerEvents = ['mouseover', 'touchstart', 'blur', 'click', 'focus'];
+      function wireTrigger(el) {
+        if (!el) {
+          return;
         }
-
-
+        triggerEvents.forEach(evt =>
+          el.addEventListener(evt, launchShortCodeReplacementFunctions, false)
+        );
       }
+
+      // Next/prev used to be wired with one-time, synchronous
+      // wireTrigger(sgNextStudentButton()) calls made when the page first
+      // reached readyState 'complete' - the same "ran once, too early,
+      // before React had mounted the element, and never retried" bug
+      // already fixed elsewhere (updateObserver, commentObserver, etc.).
+      // If the buttons weren't in the DOM at that exact moment,
+      // sgNextStudentButton() returned null, wireTrigger(null) silently
+      // no-opped, and nothing was ever attached for the rest of the
+      // session - which is exactly why short codes weren't being replaced
+      // on next/prev at all. sgObserveAndInstall retries until they exist.
+      sgObserveAndInstall('#next-student-button, [data-testid="next-student-button"]', 'data-palcsui-greeting-trigger-installed', wireTrigger);
+      sgObserveAndInstall('#prev-student-button, [data-testid="previous-student-button"]', 'data-palcsui-greeting-trigger-installed', wireTrigger);
+      // The student name dropdown (jump to an arbitrary student) wasn't
+      // wired up at all before - only next/prev were. Navigating away via
+      // this dropdown left any [[StudentName]]/[[LessonName]] short codes
+      // unreplaced in the comment box, which Canvas's autosave then saved
+      // as a draft with the literal short code text still in it instead of
+      // the actual name. sgObserveAndInstall here is defensive in case this
+      // element is ever replaced/remounted, though it doesn't appear to be.
+      sgObserveAndInstall('[data-testid="student-select-trigger"]', 'data-palcsui-greeting-trigger-installed', wireTrigger);
+      sgObserveAndInstall('[data-testid="submit-comment-button"]', 'data-palcsui-greeting-trigger-installed', wireTrigger);
+      sgObserveAndInstall('[data-testid="save-rubric-assessment-button"]', 'data-palcsui-greeting-trigger-installed', wireTrigger);
+
+      // Also wire up our own injected "advance" buttons (added by
+      // addNextComment/addNextRubric/addAwardFullPointsAndNext). There can
+      // be more than one on the page at once, hence the "All" variant.
+      sgObserveAndInstallAll('.' + namespace + '_next', 'data-palcsui-greeting-trigger-installed', wireTrigger);
+
+      // Comment Library: re-trigger short code replacement when a saved
+      // comment is inserted from the library, since that also changes the
+      // RCE content.
+      // NOTE: "comment-library-button" (the button that opens the drawer) is
+      // confirmed against the page you sent. The drawer's *internal* item
+      // selectors below are carried over from the old script unverified,
+      // since the drawer wasn't open in either capture - please flag it if
+      // clicking a saved comment from the library doesn't trigger the
+      // short-code swap, and send a capture with the library drawer open so
+      // this can be corrected.
+      function addListenersToLibraryComments() {
+        var commentDivs = document.querySelectorAll('[data-testid="library-comment-area"] [data-testid="comment-library"]');
+        commentDivs.forEach(function(div) {
+          if (div.hasAttribute('data-palcsui-library-item-installed')) {
+            return;
+          }
+          div.setAttribute('data-palcsui-library-item-installed', 'true');
+          div.addEventListener('click', function() {
+            setTimeout(launchShortCodeReplacementFunctions, 500);
+          });
+        });
+      }
+      sgObserveAndInstall('[data-testid="comment-library-button"]', 'data-palcsui-library-installed', function(btn) {
+        btn.addEventListener('click', function() {
+          setTimeout(addListenersToLibraryComments, 300);
+        });
+      });
+
     }
-  } // End of setup()
+  }
+
+  function addSgGreeting() {
+    if (!isSG) {
+      return;
+    }
+    var studentFirstName = sgStudentFirstName();
+    var editor = sgCommentEditor();
+    if (!editor) {
+      return;
+    }
+    editor.setContent('<p>Hi ' + studentFirstName + ',</p>' + editor.getContent());
+    editor.getBody().dispatchEvent(new Event('input', { 'bubbles': true }));
+  }
+
+  function addSgSalutation() {
+    if (!isSG) {
+      return;
+    }
+    var studentFirstName = sgStudentFirstName();
+    var editor = sgCommentEditor();
+    if (!editor) {
+      return;
+    }
+    // Insert at the current cursor position, same as the old behavior.
+    editor.insertContent(studentFirstName + '!');
+    editor.getBody().dispatchEvent(new Event('input', { 'bubbles': true }));
+  }
 
   function replaceSgStudentNameShortCode() {
     return new Promise((resolve, reject) => {
       try {
-
-        if (speed_grader == 'speed_grader') {
-
-          //var studentFullName = document.getElementById('students_selectmenu-button').innerText
-          var studentFullName = document.querySelector('#students_selectmenu-button .ui-selectmenu-status .ui-selectmenu-item-header').innerText
-
-
-          //console.log(studentFullName)
-
-          var studentFullNameArray = studentFullName.split(/[ ]+/);
-          //var studentFullNameArray = studentFullName.split(" "); //Both ways work
-
-          //console.log(studentFullNameArray)
-
-          var studentFirstName = studentFullNameArray[0];
-
-          //console.log(studentFirstName)
-
-
-          // #speed_grader_comment_textarea_mount_point
-          // #speed_grader_comment_textarea
-
-
-          var commentBoxTextArea = document.getElementById('speed_grader_comment_textarea');
-          var comment_rce_textarea_ifr = document.getElementById("comment_rce_textarea_ifr");
-
-          if (commentBoxTextArea){
-
-            // Basic add
-            // commentBoxTextArea.value += studentFirstName
-
-            var commentBoxTextAreaValue = commentBoxTextArea.value
-
-            const regex = /(\[{2}StudentName\]{2})/gm;
-
-            var commentBoxTextAreaNewValue = commentBoxTextAreaValue.replaceAll(regex, studentFirstName);
-
-            commentBoxTextArea.value = commentBoxTextAreaNewValue
-
-
-          } else if (comment_rce_textarea_ifr) {
-
-            var editor = tinymce.get('comment_rce_textarea'); // Get the TinyMCE editor instance
-                    if (editor) {
-                        //editor.focus(); // Focus the editor to ensure the cursor is active
-                        // Removing the focus call hack because canvas finally fixed their trash code and now the keyboard shortcuts are working
-
-                        // Save the current selection
-                        const bookmark = editor.selection.getBookmark(2, true);
-
-                        // Replace the content
-                        const content = editor.getContent();
-                        const regex = /(\[{2}StudentName\]{2})/gm;
-                        const newContent = content.replace(regex, studentFirstName);
-                        editor.setContent(newContent);
-
-                        // Restore the selection
+        if (isSG) {
+          var studentFirstName = sgStudentFirstName();
+          var editor = sgCommentEditor();
+          if (editor) {
+            var content = editor.getContent();
+            var regex = /(\[{2}StudentName\]{2})/gm;
+            var newContent = content.replace(regex, studentFirstName);
+            // Only touch the editor if the short code was actually present.
+            // An unconditional setContent() call - even with unchanged
+            // content - fires TinyMCE's change event, which Canvas's new
+            // "Comment Drafts" feature hooks to auto-save a draft.
+            if (newContent !== content) {
+              var bookmark = editor.selection.getBookmark(2, true);
+              editor.setContent(newContent);
               editor.selection.moveToBookmark(bookmark);
             }
-
-
           }
-
-
         }
-        resolve(); // Resolve the promise when done
+        resolve();
       } catch (error) {
-        reject(error); // Reject the promise if an error occurs
+        reject(error);
       }
     });
   }
@@ -3091,77 +2642,56 @@ function addSgStudentNameGreeting() {
   function replaceSgLessonNameShortCode() {
     return new Promise((resolve, reject) => {
       try {
-
-        if (speed_grader == 'speed_grader') {
-
-          var lessonName = document.querySelector('#assignment_url h2.assignmentDetails__Title').innerText;
-          var commentBoxTextArea = document.getElementById('speed_grader_comment_textarea');
-          var comment_rce_textarea_ifr = document.getElementById("comment_rce_textarea_ifr");
-
-          if (commentBoxTextArea){
-
-            // Basic add
-            // commentBoxTextArea.value += studentFirstName
-
-            var commentBoxTextAreaValue = commentBoxTextArea.value
-
-            const regex = /(\[{2}LessonName\]{2})/gm;
-
-            var commentBoxTextAreaNewValue = commentBoxTextAreaValue.replaceAll(regex, lessonName);
-
-            commentBoxTextArea.value = commentBoxTextAreaNewValue
-
-
-          } else if (comment_rce_textarea_ifr) {
-
-            var editor = tinymce.get('comment_rce_textarea'); // Get the TinyMCE editor instance
-                    if (editor) {
-                        //editor.focus(); // Focus the editor to ensure the cursor is active
-                        // Removing the focus call hack because canvas finally fixed their trash code and now the keyboard shortcuts are working
-
-                        // Save the current selection
-                        const bookmark = editor.selection.getBookmark(2, true);
-
-                        // Replace the content
-                        const content = editor.getContent();
-                        const regex = /(\[{2}LessonName\]{2})/gm;
-                        const newContent = content.replace(regex, lessonName);
-                        editor.setContent(newContent);
-
-                        // Restore the selection
+        if (isSG) {
+          var lessonName = sgAssignmentName();
+          var editor = sgCommentEditor();
+          if (editor) {
+            var content = editor.getContent();
+            var regex = /(\[{2}LessonName\]{2})/gm;
+            var newContent = content.replace(regex, lessonName);
+            if (newContent !== content) {
+              var bookmark = editor.selection.getBookmark(2, true);
+              editor.setContent(newContent);
               editor.selection.moveToBookmark(bookmark);
             }
-
-
           }
-
-
         }
-        resolve(); // Resolve the promise when done
+        resolve();
       } catch (error) {
-        reject(error); // Reject the promise if an error occurs
+        reject(error);
       }
     });
   }
 
+  // Used by every submit/advance flow. Deliberately does NOT call
+  // replaceSgStudentNameShortCode() + replaceSgLessonNameShortCode() via
+  // Promise.all like it used to - that ran two independent setContent()
+  // calls back to back (one per short code), each capable of firing
+  // Canvas's draft-autosave, which is what produced two duplicate draft
+  // PUT requests on every submit. This does both replacements in one pass
+  // and touches the editor at most once.
   function launchShortCodeReplacementFunctions() {
-
     return new Promise((resolve, reject) => {
-      if (speed_grader == 'speed_grader') {
-          Promise.all([
-              replaceSgStudentNameShortCode(),
-              replaceSgLessonNameShortCode()
-          ]).then(() => {
-              console.log('replaceSgStudentNameShortCode() and replaceSgLessonNameShortCode() promise resolved. The REAL launchShortCodeReplacementFunctions() launched properly.');
-              resolve();
-          }).catch((error) => {
-              console.error("Error in shortcode replacement:", error);
-              reject(error);
-          });
-      } else {
-          resolve();
+      try {
+        if (isSG) {
+          var editor = sgCommentEditor();
+          if (editor) {
+            var content = editor.getContent();
+            var newContent = content
+              .replace(/(\[{2}StudentName\]{2})/gm, sgStudentFirstName())
+              .replace(/(\[{2}LessonName\]{2})/gm, sgAssignmentName());
+            if (newContent !== content) {
+              var bookmark = editor.selection.getBookmark(2, true);
+              editor.setContent(newContent);
+              editor.selection.moveToBookmark(bookmark);
+            }
+          }
+        }
+        resolve();
+      } catch (error) {
+        console.error("Error in shortcode replacement:", error);
+        reject(error);
       }
-      console.log('The REAL launchShortCodeReplacementFunctions() launched');
     });
   }
 
@@ -3446,79 +2976,132 @@ function stopCanvasFromRenamingLTI() {
 }
 
   function addAwardFullPointsAndNext() {
-    if (isSG && typeof config.awardFullPointsAndNext !== 'undefined' && config.awardFullPointsAndNext) {
-      var gradingBox = document.querySelector('input#grading-box-extended');
-      if (gradingBox) {
-        var parent = gradingBox.parentNode;
-        if (parent) {
-          var advance = advanceButton(awardFullPointsAndNext, {
-            'title' : 'Award full points, submit any comments, and advance to next user'
-          });
-          //gradingBox.title = 'Save rubric and stay on this user';
-          advance.style.marginLeft = '3px';
-          parent.insertBefore(advance, gradingBox.nextSibling);
-        }
-      }
+    if (!(isSG && typeof config.awardFullPointsAndNext !== 'undefined' && config.awardFullPointsAndNext)) {
+      return;
     }
+    // The grade input is remounted by React on every student navigation, so
+    // re-install the advance button every time it reappears.
+    sgObserveAndInstall('[data-testid="grade-input"]', 'data-palcsui-fullpoints-installed', function(gradeInput) {
+      // Anchor to the whole "Grade out of N" field (its label + facade box),
+      // not gradeInput.parentNode directly - that parentNode is the facade
+      // <span> that draws the input's visual border, so inserting there put
+      // the button INSIDE the grade box border instead of next to it.
+      var fieldContainer = gradeInput.closest('[data-testid="assessment-grade-input-view"]') ||
+                            gradeInput.closest('label') ||
+                            gradeInput.parentNode;
+
+      var advance = advanceButton(awardFullPointsAndNext, {
+        'title' : 'Award full points, submit any comments, and advance to next user',
+        'compact' : true
+      });
+
+      // Placed below the grade/status row rather than beside it. The
+      // "beside" attempt (absolute positioning anchored to the grade
+      // field) overlapped the adjacent status dropdown, because the grid
+      // column that field lives in is only as wide as the input itself -
+      // that's a width constraint in Canvas's own layout that neither
+      // absolute positioning nor appending in-flow within the label can
+      // safely work around without visibility into the live CSS grid
+      // definition. Below avoids colliding with anything.
+      var parent = fieldContainer.parentNode;
+      if (parent) {
+        advance.style.marginTop = '0.5rem';
+        advance.style.marginLeft = '0';
+        parent.insertBefore(advance, fieldContainer.nextSibling);
+      }
+    });
   }
 
   function awardFullPointsAndNext() {
-    var gradingBox = document.querySelector('input#grading-box-extended');
-    if (gradingBox) {
+    var gradeInput = sgGradeInput();
+    if (!gradeInput) {
+      return;
+    }
 
-      //var studentGrade = parseFloat(document.getElementById('grading-box-extended').value, 10);
-      var assignmentValue = parseFloat(document.getElementById('grade_container').innerText.split(/(\d+)/g)[1], 10);
+    var assignmentValue = sgPointsPossible();
+    if (isNaN(assignmentValue)) {
+      console.log('PalcsUI: could not determine points possible for this assignment.');
+      return;
+    }
 
-      var studentGradeBox = document.getElementById('grading-box-extended');
-      //console.log('Original value = ' + studentGradeBox.value);
-      studentGradeBox.value = assignmentValue;
-      studentGradeBox.setAttribute('value', studentGradeBox.value);
-      //console.log('New value = ' + studentGradeBox.value);
+    // Get the functions from addSgStudentNameGreeting
+    const { launchShortCodeReplacementFunctions } = addSgStudentNameGreeting();
 
-      if (isNaN(assignmentValue)) {
-        console.log('Assignment Value is not a number');
-      }
+    // Previous attempts advanced to the next student after a guessed fixed
+    // delay (300ms). If a real submit takes longer than that under real
+    // network conditions, advancing early means the comment box still has
+    // content in it at the moment we navigate away - and Canvas's Comment
+    // Drafts feature treats leaving the box non-empty as "abandoned it,
+    // better save a draft", even though the submit also goes through
+    // separately. This version waits for the actual DOM confirmation that
+    // the comment was submitted (a new comment-N node appearing) before
+    // doing anything else, instead of guessing at timing.
+    launchShortCodeReplacementFunctions()
+      .then(() => new Promise(resolve => setTimeout(resolve, 100)))
+      .then(() => {
+        var editor = sgCommentEditor();
+        var hasComment = editor && editor.getContent({ format: 'text' }).trim().length > 0;
 
-      // Get the functions from addSgStudentNameGreeting
-      const { launchShortCodeReplacementFunctions, replaceSgStudentNameShortCode, replaceSgLessonNameShortCode } = addSgStudentNameGreeting();
+        if (!hasComment) {
+          return Promise.resolve();
+        }
 
-      // Call the function to execute launchShortCodeReplacementFunctions
-      // TODO: This might be not be necessary here, consider removing. - DWS
-      launchShortCodeReplacementFunctions();
+        var commentsContainer = sgCommentsContainer();
+        var waitForComment = sgWaitForMutation(
+          commentsContainer,
+          { childList: true },
+          function(mutations) {
+            return mutations.some(function(m) {
+              return Array.prototype.some.call(m.addedNodes, function(node) {
+                return node.nodeType === 1 && node.getAttribute &&
+                  /^comment-\d+$/.test(node.getAttribute('data-testid') || '');
+              });
+            });
+          },
+          4000
+        );
 
-      // Use replaceSgStudentNameShortCode here - This seems redundant, consider removing - TODO - DWS.
-      replaceSgStudentNameShortCode();
-      // Use replaceSgLessonNameShortCode here - This seems redundant, consider removing - TODO - DWS.
-      replaceSgLessonNameShortCode();
+        var btn = sgCommentSubmitButton();
+        if (btn) {
+          btn.dispatchEvent(new Event('click', {
+            'bubbles' : true
+          }));
+        }
+        return waitForComment;
+      })
+      .then(() => {
+        // Only now, once the comment is confirmed submitted (or there was
+        // none to submit), touch the grade input.
+        var waitForGrade = sgWaitForMutation(
+          sgGradedCountEl(),
+          { childList: true, characterData: true, subtree: true },
+          function() { return true; },
+          4000
+        );
 
-      advanceUser = true;
-      advanceSrc = 'grade';
-      gradingBox.dispatchEvent(new Event('change', {
-        'bubbles' : true
-      }));
-
-      // This is for the saving of the comments. Should advanceUser be true or false??? Does it matter???
-      // If we get any collisions with the grade or comments, remove this code.
-      var btn = document.getElementById('comment_submit_button');
-      if (btn) {
-        advanceUser = true;
-        advanceSrc = 'comment';
-        btn.dispatchEvent(new Event('click', {
+        // React's InstUI TextInput only commits a value change on a real
+        // focus -> input -> blur sequence. A synthetically-dispatched
+        // 'blur' Event() on an element that was never actually focused
+        // does not fire the matching native 'focusout' event React
+        // listens for, so the value never got saved even though it looked
+        // like it was set. Using real .focus()/.blur() calls (not
+        // dispatchEvent) fixes that.
+        gradeInput.focus();
+        sgSetReactInputValue(gradeInput, assignmentValue);
+        gradeInput.dispatchEvent(new Event('change', {
           'bubbles' : true
         }));
-      }
-      
-      // We actually can't use a Promise here unless the launchShortCodeReplacementFunctions() function 
-      // is available. The updated code makes this now possible. - DWS
-      // Use a Promise to ensure launchShortCodeReplacementFunctions completes before nextUser
-      // TODO: This might be redundant, consider removing. - DWS
-      new Promise((resolve) => {
-        launchShortCodeReplacementFunctions();
-        resolve();
-      }).then(() => {
-          nextUser();
+        gradeInput.blur();
+
+        return waitForGrade;
+      })
+      .then(() => {
+        advanceUser = true;
+        nextUser();
+      })
+      .catch((error) => {
+        console.error("Error processing events:", error);
       });
-    }
   }
 
 
