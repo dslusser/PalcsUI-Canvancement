@@ -58,6 +58,9 @@ Finally, for an assignment with a rubric, a way to download the rubric data of a
   - Adjusting version numbers to align with common practice
   - Removed some focusing on the SpeedGrader comment box when hovering over some elements. This was a hacky way to overcome the broken keyboard shortcuts that Canvas introduced into the SpeedGrader (ironic name, SpeedGrader). Canvas has now fixed the keyboard shortcuts after an absurd amount of time, so I'm removing the hacky code.
 
+- v5.4.16
+  - Refactored code in the SpeedGrader portion of the script to account for the breaking changes that Canvas introduced with their "new" and updated SpeedGrader.
+
 ### [palcs-ui-standalone-beta.user.js](https://github.com/dslusser/PalcsUI-Canvancement/raw/master/install/palcs-ui-standalone-beta.user.js)
 - v5.3.1
   - Adjusting version numbers to align with common practice
