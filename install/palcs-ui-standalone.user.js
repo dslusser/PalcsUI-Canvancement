@@ -7,7 +7,7 @@
 // @match         https://*.instructure.com/courses/*/quizzes/*/history?*
 // @match         https://*.instructure.com/*
 // @noframes
-// @version       5.4.16
+// @version       5.4.18
 // @grant         none
 // @updateURL     https://github.com/dslusser/PalcsUI-Canvancement/raw/master/install/palcs-ui-standalone.user.js
 // @downloadURL   https://github.com/dslusser/PalcsUI-Canvancement/raw/master/install/palcs-ui-standalone.user.js
@@ -205,6 +205,13 @@
     var D = document;
     var advanceUser = false;
     var advanceSrc = false;
+    // showGradePercentage() lives inside addGradePercentage()'s own closure
+    // (private to it), but the quiz "Update Scores" flow inside the
+    // submission iframe needs to trigger a recompute too, from a
+    // completely different function scope. This gets assigned the real
+    // function once addGradePercentage() runs; calling it before that is a
+    // harmless no-op.
+    var sgShowGradePercentage = function() {};
 
     // ---------------------------------------------------------------------
     // SpeedGrader DOM helpers (New/React SpeedGrader - "Performance and
@@ -896,6 +903,27 @@
           D = frame;
           isQuiz = true;
           quizFeatures();
+
+          // Manually grading a quiz question and clicking "Update Scores"
+          // updates the outer page's grade box, but not through any native
+          // input/change event the percentage display's listeners rely on -
+          // same underlying issue as the rubric Submit Assessment button.
+          // The form lives inside this iframe's own document rather than
+          // the main page, so it needs its own listener each time the
+          // iframe (re)loads. NOTE: this is carried over from the
+          // classic-UI script's #update_history_form reference and hasn't
+          // been verified against a live capture of a quiz loaded inside
+          // the new SpeedGrader - flag it if this doesn't work and send a
+          // capture of that iframe's content so it can be corrected.
+          var updateForm = frame.getElementById('update_history_form');
+          if (updateForm && !updateForm.hasAttribute('data-palcsui-percent-listener-installed')) {
+            updateForm.setAttribute('data-palcsui-percent-listener-installed', 'true');
+            updateForm.addEventListener('submit', function() {
+              [150, 400, 800, 1500, 3000].forEach(function(delay) {
+                setTimeout(sgShowGradePercentage, delay);
+              });
+            });
+          }
         }
       } catch (err) {
         // non-quiz content is loaded from a different domain and throws an error
@@ -2355,6 +2383,21 @@
         ['keyup', 'blur', 'keypress', 'change', 'input'].forEach(evt =>
           input.addEventListener(evt, showGradePercentage, false)
         );
+        // For quiz submissions, the grade input is disabled=true (Canvas
+        // computes the total from the individual question scores) and its
+        // value is updated by Canvas itself when "Update Scores" is
+        // clicked inside the submission iframe - which doesn't fire any of
+        // the events listened for above. Watching the "value" attribute
+        // directly here is a more reliable catch-all than trying to hook
+        // into the iframe's internal form, since it works entirely from
+        // this page regardless of exactly how Canvas performs the update.
+        var valueObserver = new MutationObserver(function() {
+          showGradePercentage();
+        });
+        valueObserver.observe(input, {
+          attributes: true,
+          attributeFilter: ['value']
+        });
       });
 
       // Recompute on next/prev navigation. These buttons keep their ids
@@ -2362,7 +2405,7 @@
       // a one-time listener attachment is safe here.
       var next = sgNextStudentButton();
       var prev = sgPrevStudentButton();
-      ['click', 'mousedown', 'ontouchstart'].forEach(evt => {
+      ['click', 'mousedown', 'touchstart'].forEach(evt => {
         if (next) {
           next.addEventListener(evt, showGradePercentage, false);
         }
@@ -2452,6 +2495,8 @@
         pointPercentNumber.innerHTML = (rawGradePercent * 100).toFixed(2) + ' %';
       }
   }
+
+  sgShowGradePercentage = showGradePercentage;
 
 }
 
@@ -2886,7 +2931,7 @@ function stopCanvasFromRenamingLTI() {
               function visibilityObserver() {
 
                   const innerLTI = document.getElementById("select_context_content_dialog");
-                  
+
                   const lessonTitle = document.querySelector('#assignment_name');
                   //console.log("lessonTitle = " + lessonTitle)
                   var originalLessonTitle = lessonTitle.value;
