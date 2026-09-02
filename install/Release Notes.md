@@ -22,6 +22,9 @@ A separate space for release notes, both structured and unstructured.
   - Adjusting version numbers to align with common practice
   - Removed some focusing on the SpeedGrader comment box when hovering over some elements. This was a hacky way to overcome the broken keyboard shortcuts that Canvas introduced into the SpeedGrader (ironic name, SpeedGrader). Canvas has now fixed the keyboard shortcuts after an absurd amount of time, so I'm removing the hacky code.
 
+- v5.4.16
+  - Refactored code in the SpeedGrader portion of the script to account for the breaking changes that Canvas introduced with their "new" and updated SpeedGrader.
+
 ### [palcschool-rc-entry.user.js](https://github.com/dslusser/PalcsUI-Canvancement/raw/master/install/palcschool-rc-entry.user.js)
 - v3.1.0
   - Creating this script as an update to [palcschool-rce.user.js](https://github.com/dslusser/PalcsUI-Canvancement/raw/master/install/palcschool-rce.user.js) which will be deprecated in the future.
