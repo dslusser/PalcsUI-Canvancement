@@ -5,7 +5,7 @@
 // @description   User enhancements for the individual Canvas gradebook page
 // @match         https://*.instructure.com/courses/*/grades/*
 // @noframes
-// @version       2.11.50
+// @version       2.15.1
 // @grant         none
 // @updateURL     https://github.com/dslusser/PalcsUI-Canvancement/raw/master/install/the-waybetter-gradebook-standalone-beta.user.js
 // @downloadURL   https://github.com/dslusser/PalcsUI-Canvancement/raw/master/install/the-waybetter-gradebook-standalone-beta.user.js
@@ -13,44 +13,114 @@
 
 (function() {
     'use strict';
-  
-  
+
+
     var theWayBetterGradebookUI = function() {
       'use strict';
-      
-  
-  
-  
-  
-  
-  
+
+
+
+
+
+
+
       // The Waybetter Gradebook
       // Branch v2.3.02
-      // Version v2.11.50
+      // Version v2.15.1
       // Workspace the_waybetter_gradebook_5.code-workspace
       //
       // v2.11.50 OFFICIAL BETA RELEASE AT THIS POINT
-      // 
-      // 
+      //
+      //
       // GOALS:
-      // 
-      // 
+      //
+      //
       // CURRENT ISSUES:
-      // 
-      // 
+      //
+      //
       // TODO:
-      // 
-      // 
+      //
+      //
       // RELEASE NOTES:
-      // 
-  
+      // v2.12.0 - Updated all time frames for the 2026-2027 school year (school year, MP1-MP4)
+      //           per Attachment D of the 2026-27 PALCS Academic Calendar:
+      //             School Year: 2026-08-25 to 2027-06-10
+      //             MP1: 2026-08-25 to 2026-11-01
+      //             MP2: 2026-11-02 to 2027-01-24
+      //             MP3: 2027-01-25 to 2027-04-11
+      //             MP4: 2027-04-12 to 2027-06-10
+      //         - Removed Progress Checks (PC1/PC2/PC3) entirely, since PALCS no longer uses them:
+      //             - Removed MP#PC# time frame constants
+      //             - Removed getCurrentProgressCheck(); replaced getMarkingPeriodProgressCheck()
+      //               with getMarkingPeriodForDueDate() (marking-period-only lookup)
+      //             - Removed "Current Progress Check" from the time frame display info
+      //             - Removed PC options from the predefined time frame dropdown
+      //             - Removed PC rows from the Course Totals table definition
+      //             - Submissions table badge now shows the Marking Period instead of the Progress Check
+      // v2.13.0 - Fixed due dates not matching what Canvas shows the student when an assignment
+      //           has an individual/section/group override (most commonly an extension that
+      //           moves the due date LATER than the assignment's base/default due date).
+      //         - Root cause: due dates were previously resolved by taking the EARLIEST of
+      //           assignment.due_at (base date) and submission.cached_due_date. That's only
+      //           correct when an override moves the date earlier; it silently picks the wrong
+      //           (earlier) date whenever an override moves it later.
+      //         - Added getEffectiveDueDate(assignment, submission), which reads Canvas's own
+      //           already-override-resolved due date from ENV.effective_due_dates[assignmentId]
+      //           [studentId].due_at -- the literal value Canvas shows the student, so there's
+      //           no more guessing between due_at and cached_due_date. Falls back to the old
+      //           earliest-of logic only if Canvas didn't provide an effective_due_dates entry
+      //           for that assignment/student (should be rare).
+      //         - Replaced all three ad hoc due-date computations (group/weight totals filter,
+      //           submissions table sort comparator, and the submissions table row due date /
+      //           marking-period badge / late-status logic) with this single shared function,
+      //           so every part of the tool now agrees on the same due date for a given
+      //           assignment.
+      // v2.14.0 - Added a "Use Canvas Grading Period Dates" checkbox to The Waybetter Gradebook
+      //           Advanced Settings, so marking period boundaries no longer have to come solely
+      //           from hardcoded dates verified against a calendar PDF every year.
+      //         - Checked (default): MP1-MP4 boundaries are pulled live from
+      //           ENV.grading_period_set.grading_periods. Unchecked: falls back to the
+      //           hardcoded MP#TotalStartTime/EndTime constants. Intended mainly for
+      //           troubleshooting -- e.g. if an assignment isn't showing up where expected,
+      //           toggle this to compare against the hardcoded dates.
+      //         - If Canvas's grading_period_set is missing or doesn't contain exactly four
+      //           cleanly-titled MP1-MP4 periods, silently and safely falls back to the
+      //           hardcoded dates even with the box checked (never breaks the gradebook).
+      //         - predefinedTimeFramesObject / predefinedMarkingPeriodTimeFramesObject are now
+      //           populated by refreshMarkingPeriodSource(), which re-runs whenever the checkbox
+      //           changes -- everything downstream (dropdown, sort, badges, row filtering) reads
+      //           from the same object, so it automatically stays in sync with the toggle.
+      //         - #timeFrameDisplay now shows "Marking Period Source" (Canvas vs. hard-coded,
+      //           including when a checked box silently fell back) and the resolved MP1-MP4
+      //           date ranges, so what's displayed always matches whichever source is active.
+      //         - Session-only, matching the other Advanced Settings checkboxes: always resets
+      //           to checked (Canvas dates) on page load, nothing is persisted.
+      // v2.15.0 - Renamed the student-switcher "Apply" button to "Load Student Data" -- it was
+      //           never just applying a UI filter, it was always doing a full page navigation/
+      //           reload, and the new name says so.
+      //         - Added a refresh icon button next to it, as a shortcut for "reload this
+      //           student's data" without needing to touch the dropdown first. Both buttons now
+      //           call a single shared loadStudentData(url) function (full page reload via
+      //           window.location.href) -- the button uses whichever student is selected in the
+      //           dropdown, the icon uses the current page as-is.
+      //         - This has to be a real page reload (not an in-place API re-fetch) because ENV
+      //           (effective_due_dates, grading_period_set, etc.) is baked into the page by
+      //           Canvas at initial render and doesn't update via any of this script's API
+      //           calls -- an in-place refresh would leave those stale while everything else
+      //           looked current.
+      // v2.15.1 - Swapped the refresh button's icon from a plain Unicode arrow to Canvas's own
+      //           icon-refresh icon font class, and gave it the exact same classes/margin as the
+      //           Load Student Data button (Button, Button--primary) so the two sit together as
+      //           a matched pair rather than looking like two different button styles.
+      //
+
       function initializeWaybetterGradebook() {
         //const courseId = '77777'; // Replace with your course ID
         //const studentId = '33333'; // Replace with your student ID
         // accessToken is not actually needed. We're not making any API calls outside of canvas - this can be removed
         //const accessToken = '1111~ucT7Za****************************'; // Replace with your Canvas API access token
         //const apiUrl = 'https://[YourCanvasInstance].instructure.com/api/v1';
-        
+
         const courseId = ENV.course_id || prompt("Enter a course id");
         const studentId = ENV.student_id || prompt("Enter a student id");
         const courseOutcomesEnabled = ENV.student_outcome_gradebook_enabled || false;
@@ -58,126 +128,128 @@
         const apiUrl = `${baseUrl}/api/v1`;
         const enrollmentsApiUrl = `${apiUrl}/courses/${courseId}/enrollments?per_page=100&type[]=StudentEnrollment`;
         const groupWeightingScheme = ENV.group_weighting_scheme;
-        
+
         // Time Frames
         // Custom Time Frames
         //const customStartTime = new Date('2024-04-04T00:00:00'); // Start of custom time frame
         //const customEndTime = new Date('2024-05-01T23:59:59'); // End of custom time frame
-  
+
         // Custom Time Frames
-        const customStartTime = new Date('2025-08-25T00:00:00'); // Start of custom time frame
-        const customEndTime = new Date('2026-06-12T23:59:59'); // End of custom time frame
-        
+        const customStartTime = new Date('2026-08-25T00:00:00'); // Start of custom time frame
+        const customEndTime = new Date('2027-06-10T23:59:59'); // End of custom time frame
+
         // School Year Time Frames
-        const schoolYearStartTime = new Date('2025-08-25T00:00:00'); // Start of School Year time frame
-        const schoolYearEndTime = new Date('2026-06-12T23:59:59'); // End of School Year time frame
+        const schoolYearStartTime = new Date('2026-08-25T00:00:00'); // Start of School Year time frame
+        const schoolYearEndTime = new Date('2027-06-10T23:59:59'); // End of School Year time frame
 
         // MP1 Total Time Frames
-        const MP1TotalStartTime = new Date('2025-08-25T00:00:00'); // Start of MP1 Total time frame
-        const MP1TotalEndTime = new Date('2025-11-03T23:59:59'); // End of MP1 Total time frame
-        
-        // MP1 PC1 Time Frames
-        const MP1PC1StartTime = new Date('2025-08-25T00:00:00'); // Start of MP1PC1 time frame
-        const MP1PC1EndTime = new Date('2025-09-15T23:59:59'); // End of MP1PC1 time frame
-        
-        // MP1 PC2 Time Frames
-        const MP1PC2StartTime = new Date('2025-09-16T00:00:00'); // Start of MP1PC2 time frame
-        const MP1PC2EndTime = new Date('2025-10-09T23:59:59'); // End of MP1PC2 time frame
-        
-        // MP1 PC3 Time Frames
-        const MP1PC3StartTime = new Date('2025-10-10T00:00:00'); // Start of MP1PC3 time frame
-        const MP1PC3EndTime = new Date('2025-11-03T23:59:59'); // End of MP1PC3 time frame
-  
+        const MP1TotalStartTime = new Date('2026-08-25T00:00:00'); // Start of MP1 Total time frame
+        const MP1TotalEndTime = new Date('2026-11-01T23:59:59'); // End of MP1 Total time frame
+
         // MP2 Total Time Frames
-        const MP2TotalStartTime = new Date('2025-11-04T00:00:00'); // Start of MP2 Total time frame
-        const MP2TotalEndTime = new Date('2026-01-23T23:59:59'); // End of MP2 Total time frame
-        
-        // MP2 PC1 Time Frames
-        const MP2PC1StartTime = new Date('2025-11-04T00:00:00'); // Start of MP2PC1 time frame
-        const MP2PC1EndTime = new Date('2025-11-25T23:59:59'); // End of MP2PC1 time frame
-        
-        // MP2 PC2 Time Frames
-        const MP2PC2StartTime = new Date('2025-11-26T00:00:00'); // Start of MP2PC2 time frame
-        const MP2PC2EndTime = new Date('2025-12-18T23:59:59'); // End of MP2PC2 time frame
-        
-        // MP2 PC3 Time Frames
-        const MP2PC3StartTime = new Date('2025-12-19T00:00:00'); // Start of MP2PC3 time frame
-        const MP2PC3EndTime = new Date('2026-01-23T23:59:59'); // End of MP2PC3 time frame
-  
+        const MP2TotalStartTime = new Date('2026-11-02T00:00:00'); // Start of MP2 Total time frame
+        const MP2TotalEndTime = new Date('2027-01-24T23:59:59'); // End of MP2 Total time frame
+
         // MP3 Total Time Frames
-        const MP3TotalStartTime = new Date('2026-01-24T00:00:00'); // Start of MP3 Total time frame
-        const MP3TotalEndTime = new Date('2026-04-08T23:59:59'); // End of MP3 Total time frame
-        
-        // MP3 PC1 Time Frames
-        const MP3PC1StartTime = new Date('2026-01-24T00:00:00'); // Start of MP3PC1 time frame
-        const MP3PC1EndTime = new Date('2026-02-13T23:59:59'); // End of MP3PC1 time frame
-        
-        // MP3 PC2 Time Frames
-        const MP3PC2StartTime = new Date('2026-02-14T00:00:00'); // Start of MP3PC2 time frame
-        const MP3PC2EndTime = new Date('2026-03-09T23:59:59'); // End of MP3PC2 time frame
-        
-        // MP3 PC3 Time Frames
-        const MP3PC3StartTime = new Date('2026-03-10T00:00:00'); // Start of MP3PC3 time frame
-        const MP3PC3EndTime = new Date('2026-04-08T23:59:59'); // End of MP3PC3 time frame
-  
+        const MP3TotalStartTime = new Date('2027-01-25T00:00:00'); // Start of MP3 Total time frame
+        const MP3TotalEndTime = new Date('2027-04-11T23:59:59'); // End of MP3 Total time frame
+
         // MP4 Total Time Frames
-        const MP4TotalStartTime = new Date('2026-04-09T00:00:00'); // Start of MP4 Total time frame
-        const MP4TotalEndTime = new Date('2026-06-12T23:59:59'); // End of MP4 Total time frame
-        
-        // MP4 PC1 Time Frames
-        const MP4PC1StartTime = new Date('2026-04-09T00:00:00'); // Start of MP4PC1 time frame
-        const MP4PC1EndTime = new Date('2026-04-29T23:59:59'); // End of MP4PC1 time frame
-        
-        // MP4 PC2 Time Frames
-        const MP4PC2StartTime = new Date('2026-04-30T00:00:00'); // Start of MP4PC2 time frame
-        const MP4PC2EndTime = new Date('2026-05-20T23:59:59'); // End of MP4PC2 time frame
-        
-        // MP4 PC3 Time Frames
-        const MP4PC3StartTime = new Date('2026-05-21T00:00:00'); // Start of MP4PC3 time frame
-        const MP4PC3EndTime = new Date('2026-06-12T23:59:59'); // End of MP4PC3 time frame
-  
+        const MP4TotalStartTime = new Date('2027-04-12T00:00:00'); // Start of MP4 Total time frame
+        const MP4TotalEndTime = new Date('2027-06-10T23:59:59'); // End of MP4 Total time frame
+
         // Define an object with all predefined time frames
-        const predefinedTimeFramesObject = {
-            SchoolYearTotal: { start: schoolYearStartTime, end: schoolYearEndTime },
-            MP1Total: { start: MP1TotalStartTime, end: MP1TotalEndTime },
-            MP1PC1: { start: MP1PC1StartTime, end: MP1PC1EndTime },
-            MP1PC2: { start: MP1PC2StartTime, end: MP1PC2EndTime },
-            MP1PC3: { start: MP1PC3StartTime, end: MP1PC3EndTime },
-            MP2Total: { start: MP2TotalStartTime, end: MP2TotalEndTime },
-            MP2PC1: { start: MP2PC1StartTime, end: MP2PC1EndTime },
-            MP2PC2: { start: MP2PC2StartTime, end: MP2PC2EndTime },
-            MP2PC3: { start: MP2PC3StartTime, end: MP2PC3EndTime },
-            MP3Total: { start: MP3TotalStartTime, end: MP3TotalEndTime },
-            MP3PC1: { start: MP3PC1StartTime, end: MP3PC1EndTime },
-            MP3PC2: { start: MP3PC2StartTime, end: MP3PC2EndTime },
-            MP3PC3: { start: MP3PC3StartTime, end: MP3PC3EndTime },
-            MP4Total: { start: MP4TotalStartTime, end: MP4TotalEndTime },
-            MP4PC1: { start: MP4PC1StartTime, end: MP4PC1EndTime },
-            MP4PC2: { start: MP4PC2StartTime, end: MP4PC2EndTime },
-            MP4PC3: { start: MP4PC3StartTime, end: MP4PC3EndTime }
-        };
-  
-        // Define an object with all predefined Marking Period time frames
-        const predefinedMarkingPeriodTimeFramesObject = {
-            MP1Total: { start: MP1TotalStartTime, end: MP1TotalEndTime },
-            MP2Total: { start: MP2TotalStartTime, end: MP2TotalEndTime },
-            MP3Total: { start: MP3TotalStartTime, end: MP3TotalEndTime },
-            MP4Total: { start: MP4TotalStartTime, end: MP4TotalEndTime }
-        };
-  
+        // NOTE: Progress Checks (PC1/PC2/PC3) were removed for the 2026-2027 school year.
+        // predefinedTimeFramesObject / predefinedMarkingPeriodTimeFramesObject are populated
+        // by refreshMarkingPeriodSource() below, which decides (via the "Use Canvas Grading
+        // Period Dates" checkbox in Advanced Settings) whether to pull MP1-MP4 boundaries from
+        // ENV.grading_period_set (Canvas's own live configuration) or from the hardcoded
+        // MP#TotalStartTime/EndTime constants above. They're declared with `let` (not `const`)
+        // so the checkbox can swap the active source at runtime without a page reload.
+        let predefinedTimeFramesObject;
+        let predefinedMarkingPeriodTimeFramesObject;
+        // Tracks which marking period date source is actually in effect, so the
+        // #timeFrameDisplay info panel can always show something that matches reality (including
+        // the case where Canvas dates were requested but unavailable/invalid and we silently
+        // fell back to the hardcoded dates).
+        let markingPeriodSourceStatus = { usingCanvasDates: true, requestedCanvasDates: true };
+
+        // Builds the marking period time frames from the hardcoded constants above.
+        function buildManualMarkingPeriods() {
+            return {
+                SchoolYearTotal: { start: schoolYearStartTime, end: schoolYearEndTime },
+                MP1Total: { start: MP1TotalStartTime, end: MP1TotalEndTime },
+                MP2Total: { start: MP2TotalStartTime, end: MP2TotalEndTime },
+                MP3Total: { start: MP3TotalStartTime, end: MP3TotalEndTime },
+                MP4Total: { start: MP4TotalStartTime, end: MP4TotalEndTime }
+            };
+        }
+
+        // Builds the marking period time frames from Canvas's own live grading period
+        // configuration (ENV.grading_period_set). Returns null if that data isn't present or
+        // doesn't look like exactly four cleanly-titled MP1-MP4 periods, so the caller can fall
+        // back to the hardcoded dates instead of risking a broken/empty gradebook.
+        function buildCanvasMarkingPeriods() {
+            const periods = ENV.grading_period_set && ENV.grading_period_set.grading_periods;
+            if (!periods) return null;
+
+            const mps = periods
+                .filter(p => /^MP\d+$/.test(p.title))
+                .sort((a, b) => new Date(a.start_date) - new Date(b.start_date));
+
+            if (mps.length !== 4) return null;
+
+            const result = {};
+            mps.forEach((p, i) => {
+                result[`MP${i + 1}Total`] = { start: new Date(p.start_date), end: new Date(p.end_date) };
+            });
+            result.SchoolYearTotal = { start: result.MP1Total.start, end: result.MP4Total.end };
+            return result;
+        }
+
+        // Re-derives predefinedTimeFramesObject / predefinedMarkingPeriodTimeFramesObject based
+        // on the current state of the "Use Canvas Grading Period Dates" checkbox. Session-only:
+        // this setting is NOT persisted across page loads (matches the other Advanced Settings
+        // checkboxes), and always defaults to checked (Canvas dates) if the checkbox isn't in
+        // the DOM yet (e.g. the very first call, before addAdvancedSettingsUI() has run).
+        function refreshMarkingPeriodSource() {
+            const checkbox = document.getElementById('useCanvasGradingPeriodsCheckbox');
+            const useCanvasDates = checkbox ? checkbox.checked : true;
+
+            const canvasSource = useCanvasDates ? buildCanvasMarkingPeriods() : null;
+            const activeSource = canvasSource || buildManualMarkingPeriods();
+
+            predefinedTimeFramesObject = activeSource;
+            predefinedMarkingPeriodTimeFramesObject = {
+                MP1Total: activeSource.MP1Total,
+                MP2Total: activeSource.MP2Total,
+                MP3Total: activeSource.MP3Total,
+                MP4Total: activeSource.MP4Total
+            };
+
+            // If the checkbox is checked but Canvas's data wasn't usable, fall back silently
+            // to the manual dates but make that fallback visible rather than hidden.
+            markingPeriodSourceStatus = { usingCanvasDates: useCanvasDates && !!canvasSource, requestedCanvasDates: useCanvasDates };
+            return markingPeriodSourceStatus;
+        }
+
+        // Populate both objects immediately so anything that runs before the Advanced Settings
+        // UI exists (e.g. the initial default time frame selection) still has valid data.
+        refreshMarkingPeriodSource();
+
         // Initialize datesLoaded
         let datesLoaded = 'None';
-  
+
         // Append point for our container
         const contentContainer = document.getElementById('grade-summary-content');
         const waybetterGradebookContainer = document.createElement('div');
         waybetterGradebookContainer.id = 'waybetterGradebookContainer';
-  
+
         // Check if the first child exists and insert the new div as the second child
         // #print-grades-container should remain as the first child
         // Get the element 'print-grades-container' which should be the first child
         const printGradesContainer = document.getElementById('print-grades-container');
-  
+
         // Insert the new div after the 'print-grades-container'
         if (printGradesContainer) {
             contentContainer.insertBefore(waybetterGradebookContainer, printGradesContainer.nextSibling);
@@ -185,11 +257,11 @@
             // If 'print-grades-container' is not found, append at the end (fallback)
             contentContainer.appendChild(waybetterGradebookContainer);
         }
-  
+
         // Create a new div with the id 'studentInsightsContainer'
         const studentInsightsContainer = document.createElement('div');
         studentInsightsContainer.id = 'studentInsightsContainer';
-  
+
         // Insert the new div after the 'waybetterGradebookContainer'
         if (waybetterGradebookContainer) {
             contentContainer.insertBefore(studentInsightsContainer, waybetterGradebookContainer.nextSibling);
@@ -197,14 +269,14 @@
             // If 'waybetterGradebookContainer' is not found, append at the end (fallback)
             contentContainer.appendChild(studentInsightsContainer);
         }
-  
+
         let studentFirstNamefromEnrollments = '';
-  
+
         // Create a new div with the id 'learningMasteryGradebookContainer'
         /*const learningMasteryGradebookContainer = document.createElement('div');
         learningMasteryGradebookContainer.id = 'learningMasteryGradebookContainer';
         // Do not insert this div yet. It's based on the course outcomes enabled flag. Check setupUI().
-  
+
         if (!courseOutcomesEnabled && waybetterGradebookContainer) {
           // Insert the new div after the 'studentInsightsContainer'
           if (studentInsightsContainer) {
@@ -214,10 +286,10 @@
               contentContainer.appendChild(learningMasteryGradebookContainer);
           }
         }*/
-  
+
         // Select the grades display element using querySelector
         const gradesDisplayElement = document.querySelector("#student-grades-right-content > div.student_assignment.final_grade > span.grade");
-  
+
         // Check if the element exists to avoid errors
         if (gradesDisplayElement) {
             // Set the innerText to the desired value
@@ -227,10 +299,10 @@
         } else {
             console.log("gradesDisplayElement not found");
         }
-  
+
         // Select the Assignments are weighted by group table element using querySelector
         const assignmentsGroupTableElement = document.querySelector("#assignments-not-weighted > div:nth-child(1) > table.summary");
-  
+
         // Check if the element exists to avoid errors
         if (assignmentsGroupTableElement) {
           const only_consider_graded_assignments_wrapperElement = document.getElementById('only_consider_graded_assignments_wrapper');
@@ -246,7 +318,7 @@
           newTable.innerHTML = `<thead><tr><th scope="col">Group</th><th scope="col">Weight</th></tr></thead><tbody></tbody>`;
           const only_consider_graded_assignments_wrapperElement = document.getElementById('only_consider_graded_assignments_wrapper');
           fadeOutElementLinear(only_consider_graded_assignments_wrapperElement);
-          
+
           // Append the new table to the appropriate parent element
           const parentElement = document.querySelector("#assignments-not-weighted > div:nth-child(1)");
           if (parentElement) {
@@ -257,63 +329,63 @@
                 console.log("Parent element for assignments table not found");
             }
         }
-  
-        
+
+
         // Function to fetch all pages of a resource
         async function fetchAllPages(url) {
           let results = [];
           let response = await fetch(url);
           let data = await response.json();
           results = results.concat(data);
-        
+
           while (response.headers.get('Link').includes('rel="next"')) {
             const nextUrl = response.headers.get('Link').match(/<(.*?)>; rel="next"/)[1];
             response = await fetch(nextUrl);
             data = await response.json();
             results = results.concat(data);
           }
-  
+
           //console.log("results: " + JSON.stringify(results));
-        
+
           return results;
         }
-  
+
         async function fetchAllPages2(url) {
           let results = [];
           let response = await fetch(url);
           let data = await response.json();
           results = results.concat(data);
-        
+
           /*while (response.headers.get('Link').includes('rel="next"')) {
             const nextUrl = response.headers.get('Link').match(/<(.*?)>; rel="next"/)[1];
             response = await fetch(nextUrl);
             data = await response.json();
             results = results.concat(data);
           }*/
-  
+
           //console.log("results: " + JSON.stringify(results));
-        
+
           return results;
         }
-        
+
         // Function to fetch assignment groups
         async function fetchAssignmentGroups() {
           const url = `${apiUrl}/courses/${courseId}/assignment_groups?per_page=100`;
           return fetchAllPages(url);
         }
-  
+
         // Function to fetch enrollments
         async function fetchEnrollments() {
             const url = `${apiUrl}/courses/${courseId}/enrollments?per_page=100&type[]=StudentEnrollment`;
             return fetchAllPages(url);
         }
-        
+
         // Function to fetch submissions for a single student, including assignment details
         /*async function fetchSubmissionsForStudent() {
           const url = `${apiUrl}/courses/${courseId}/students/submissions?student_ids[]=${studentId}&include[]=assignment&include[]=assignment_overrides&per_page=100`;
           return fetchAllPages(url);
         }*/
-  
+
         async function fetchSubmissionsForStudent() {
           const url = `${apiUrl}/courses/${courseId}/students/submissions?student_ids[]=${studentId}&include[]=assignment&include[]=assignment_overrides&include[]=submission_history&per_page=100`;
           try {
@@ -325,7 +397,7 @@
               return []; // Return an empty array or handle the error as appropriate
           }
         }
-  
+
         // Function to fetch assignments via analytics
         // Not currently using, just an option for a different way
         // https://canvas.instructure.com/doc/api/all_resources.html#method.analytics_api.student_in_course_assignments
@@ -340,7 +412,7 @@
               return []; // Return an empty array or handle the error as appropriate
           }
         }
-  
+
         function getCurrentMarkingPeriod(currentDate, timeFrames) {
             const markingPeriods = ['MP1Total', 'MP2Total', 'MP3Total', 'MP4Total'];
             for (let period of markingPeriods) {
@@ -351,29 +423,40 @@
             }
             return 'Not in any marking period for the school year';
         }
-        
-        function getCurrentProgressCheck(currentDate, timeFrames) {
-            const progressChecks = [
-                'MP1PC1', 'MP1PC2', 'MP1PC3',
-                'MP2PC1', 'MP2PC2', 'MP2PC3',
-                'MP3PC1', 'MP3PC2', 'MP3PC3',
-                'MP4PC1', 'MP4PC2', 'MP4PC3'
-            ];
-            for (let check of progressChecks) {
-                const { start, end } = timeFrames[check];
-                if (currentDate >= new Date(start) && currentDate <= new Date(end)) {
-                    return check.replace('PC', ' Progress Check ');
-                }
-            }
-            return 'Not in any progress check for the school year';
+
+        // Canvas resolves the true, per-student, override-aware due date for every
+        // assignment (individual/section/group overrides, extensions, etc.) and exposes
+        // it via ENV.effective_due_dates[assignmentId][studentId].due_at. This is exactly
+        // what Canvas shows this student as their due date, so it should be trusted first.
+        // We only fall back to the older assignment.due_at / submission.cached_due_date
+        // reconciliation if Canvas hasn't given us an effective_due_dates entry at all for
+        // this assignment/student (defensive fallback, should be rare).
+        function getEffectiveDueDate(assignment, submission) {
+          const effectiveEntry = ENV.effective_due_dates &&
+                                  ENV.effective_due_dates[assignment.id] &&
+                                  ENV.effective_due_dates[assignment.id][studentId];
+
+          if (effectiveEntry && effectiveEntry.due_at) {
+            return new Date(effectiveEntry.due_at);
+          }
+
+          // Legacy fallback: earliest of assignment.due_at (base/default date) and
+          // submission.cached_due_date, kept only for assignments Canvas didn't include
+          // in effective_due_dates.
+          let fallbackDueAt = new Date(assignment.due_at || submission.cached_due_date);
+          const cachedDueDate = new Date(submission.cached_due_date);
+          if (!isNaN(cachedDueDate.getTime()) && cachedDueDate < fallbackDueAt) {
+            fallbackDueAt = cachedDueDate;
+          }
+          return fallbackDueAt;
         }
-  
-        // Function to determine the marking period progress check for the submissions table
-        function getMarkingPeriodProgressCheck(dueDate) {
-          // Filter the predefinedTimeFramesObject to only include the relevant progress checks
-          const relevantTimeFrames = ['MP1PC1', 'MP1PC2', 'MP1PC3', 'MP2PC1', 'MP2PC2', 'MP2PC3', 'MP3PC1', 'MP3PC2', 'MP3PC3', 'MP4PC1', 'MP4PC2', 'MP4PC3'];
-  
-          for (const period of relevantTimeFrames) {
+
+        // Progress Checks (PC1/PC2/PC3) were removed starting with the 2026-2027 school year.
+        // Function to determine the marking period for the submissions table, based on due date
+        function getMarkingPeriodForDueDate(dueDate) {
+          const markingPeriods = ['MP1Total', 'MP2Total', 'MP3Total', 'MP4Total'];
+
+          for (const period of markingPeriods) {
               const { start, end } = predefinedTimeFramesObject[period];
               if (dueDate >= start && dueDate <= end) {
                   return period;
@@ -381,18 +464,17 @@
           }
           return null; // Return null if no matching period is found
         }
-  
+
         // Original function to create and update the display of the current date, MP, and PC time frames. No current animations.
         // This function is being replaced with the createTimeFramesDisplayInfo function and the updateTimeFramesDisplayInfo function.
         function updateDisplay() {
             const currentDate = new Date();
             const currentMP = getCurrentMarkingPeriod(currentDate, predefinedTimeFramesObject);
-            const currentMPPC = getCurrentProgressCheck(currentDate, predefinedTimeFramesObject);
             //let datesLoaded = '';
-        
+
             // Assuming datesLoaded is updated elsewhere in your code, e.g., when dates are loaded:
             // datesLoaded = `${formatDate(loadedStartDate)} to ${formatDate(loadedEndDate)}`;
-        
+
             const displayDiv = document.getElementById('timeFrameDisplay');
             displayDiv.innerHTML = ``;
             displayDiv.innerHTML = `
@@ -400,7 +482,6 @@
                     <p>
                         <span style="margin-right: 5px;"><b>Current Date:</b> </span><span style="margin-right: 10px;"> ${currentDate.toLocaleString()} </span>
                         <span style="margin-right: 5px;"><b>Current Marking Period:</b> </span><span style="margin-right: 10px;"> ${currentMP} </span>
-                        <span style="margin-right: 5px;"><b>Current Progress Check:</b> </span><span style="margin-right: 10px;"> ${currentMPPC} </span>
                     </p>
                     <p>
                         <span style="margin-right: 5px;"><b>Dates Loaded:</b> </span><span id="datesLoaded" style="margin-right: 10px;"> ${datesLoaded} </span>
@@ -408,16 +489,39 @@
                 </div>
             `;
         }
-  
+
         // Function to create the display of the current date, MP, and PC time frames
         // This is to be used in conjunction with the updateTimeFramesDisplayInfo function
-        // The animation fade effects are handled in the animateCurrentDateDisplay and animateDatesLoadedDisplay functions, 
+        // The animation fade effects are handled in the animateCurrentDateDisplay and animateDatesLoadedDisplay functions,
         // the CSS in the SetupUI function, and their click event listeners.
+        // Builds the "Marking Period Source" and per-MP date range text shown in the
+        // #timeFrameDisplay panel, so what's displayed always matches whatever
+        // predefinedTimeFramesObject is currently active (Canvas dates vs. hardcoded dates).
+        function getMarkingPeriodSourceDisplayText() {
+            let sourceLabel;
+            if (markingPeriodSourceStatus.usingCanvasDates) {
+                sourceLabel = 'Canvas Grading Periods';
+            } else if (markingPeriodSourceStatus.requestedCanvasDates) {
+                sourceLabel = 'Hard-coded Dates (Canvas grading period data unavailable — fell back automatically)';
+            } else {
+                sourceLabel = 'Hard-coded Dates';
+            }
+
+            const rangesText = ['MP1Total', 'MP2Total', 'MP3Total', 'MP4Total']
+                .map(key => {
+                    const { start, end } = predefinedTimeFramesObject[key];
+                    return `${key.replace('Total', '')}: ${start.toLocaleDateString()} - ${end.toLocaleDateString()}`;
+                })
+                .join(' &nbsp;|&nbsp; ');
+
+            return { sourceLabel, rangesText };
+        }
+
         function createTimeFramesDisplayInfo() {
             const currentDate = new Date();
             const currentMP = getCurrentMarkingPeriod(currentDate, predefinedTimeFramesObject);
-            const currentMPPC = getCurrentProgressCheck(currentDate, predefinedTimeFramesObject);
-        
+            const { sourceLabel, rangesText } = getMarkingPeriodSourceDisplayText();
+
             const displayDiv = document.getElementById('timeFrameDisplay');
             displayDiv.innerHTML = `
                 <div>
@@ -425,25 +529,32 @@
                         <span style="margin-right: 5px;"><b>Current Date:</b> </span>
                         <span id="currentDateDisplay" style="margin-right: 10px;"> ${currentDate.toLocaleString()} </span>
                         <span style="margin-right: 5px;"><b>Current Marking Period:</b> </span><span id="currentMPDisplay" style="margin-right: 10px;"> ${currentMP} </span>
-                        <span style="margin-right: 5px;"><b>Current Progress Check:</b> </span><span id="currentMPPCDisplay" style="margin-right: 10px;"> ${currentMPPC} </span>
                     </p>
                     <p>
                         <span style="margin-right: 5px;"><b>Dates Loaded:</b> </span>
                         <span id="datesLoadedDisplay" style="margin-right: 10px;"> ${datesLoaded} </span>
                     </p>
+                    <p>
+                        <span style="margin-right: 5px;"><b>Marking Period Source:</b> </span>
+                        <span id="markingPeriodSourceDisplay" style="margin-right: 10px;"> ${sourceLabel} </span>
+                    </p>
+                    <p>
+                        <span style="margin-right: 5px;"><b>Marking Period Ranges:</b> </span>
+                        <span id="markingPeriodRangesDisplay" style="margin-right: 10px;"> ${rangesText} </span>
+                    </p>
                 </div>
             `;
         }
-  
+
         // Function to update the display of the current date, MP, and PC time frames
         // This is to be used in conjunction with the createTimeFramesDisplayInfo function.
-        // The animation fade effects are handled in the animateCurrentDateDisplay and animateDatesLoadedDisplay functions, 
+        // The animation fade effects are handled in the animateCurrentDateDisplay and animateDatesLoadedDisplay functions,
         // the CSS in the SetupUI function, and their click event listeners.
         function updateTimeFramesDisplayInfo() {
             const currentDate = new Date();
             const currentMP = getCurrentMarkingPeriod(currentDate, predefinedTimeFramesObject);
-            const currentMPPC = getCurrentProgressCheck(currentDate, predefinedTimeFramesObject);
-        
+            const { sourceLabel, rangesText } = getMarkingPeriodSourceDisplayText();
+
             // Update Current Date with fade effect (fade effect moved to it's own function)
             const currentDateDisplay = document.getElementById('currentDateDisplay');
             currentDateDisplay.textContent = currentDate.toLocaleString();
@@ -452,7 +563,7 @@
                 currentDateDisplay.textContent = currentDate.toLocaleString();
                 currentDateDisplay.style.opacity = '1';
             }, 500);*/
-        
+
             // Update Dates Loaded with fade effect (fade effect moved to it's own function)
             const datesLoadedDisplay = document.getElementById('datesLoadedDisplay');
             datesLoadedDisplay.textContent = datesLoaded;
@@ -461,16 +572,22 @@
                 datesLoadedDisplay.textContent = datesLoaded;
                 datesLoadedDisplay.style.opacity = '1';
             }, 500);*/
-        
-            // Directly update Current Marking Period and Current Progress Check 
+
+            // Directly update Current Marking Period
             // (technically, we don't really need this, but it's here for now with no fade effect)
             document.getElementById('currentMPDisplay').textContent = currentMP;
-            document.getElementById('currentMPPCDisplay').textContent = currentMPPC;
+
+            // Directly update Marking Period Source and Ranges so they always reflect
+            // whichever source (Canvas vs. hardcoded) is currently active.
+            const markingPeriodSourceDisplay = document.getElementById('markingPeriodSourceDisplay');
+            if (markingPeriodSourceDisplay) markingPeriodSourceDisplay.textContent = sourceLabel;
+            const markingPeriodRangesDisplay = document.getElementById('markingPeriodRangesDisplay');
+            if (markingPeriodRangesDisplay) markingPeriodRangesDisplay.innerHTML = rangesText;
         }
-  
+
         function getCurrentMarkingPeriodForTimeFrameSelector() {
             const currentDate = new Date(); // Get the current date and time
-        
+
             for (const [key, { start, end }] of Object.entries(predefinedMarkingPeriodTimeFramesObject)) {
                 if (currentDate >= start && currentDate <= end) {
                     return key; // Return the key of the matching time frame
@@ -478,26 +595,26 @@
             }
             return null; // Return null if no time frame matches
         }
-  
+
         function setDefaultTimeFrameForTimeFrameSelector() {
             //const currentDate = new Date(); // Get the current date and time
             const currentMarkingPeriod = getCurrentMarkingPeriodForTimeFrameSelector();
             const timeFrameSelector = document.getElementById('predefinedTimeFrames'); // Assuming the dropdown has this ID
-        
+
             if (currentMarkingPeriod) {
                 timeFrameSelector.value = currentMarkingPeriod; // Set the dropdown to the current marking period
             } else {
                 timeFrameSelector.value = ''; // Set to default option, e.g., "Select a time frame"
             }
         }
-  
+
         function setCustomDatesForCurrentMarkingPeriod() {
             const currentMarkingPeriod = getCurrentMarkingPeriodForTimeFrameSelector();
             if (currentMarkingPeriod) {
                 const { start, end } = predefinedMarkingPeriodTimeFramesObject[currentMarkingPeriod];
                 const startDateInput = document.getElementById('customStartDate');
                 const endDateInput = document.getElementById('customEndDate');
-        
+
                 if (startDateInput && endDateInput) {
                     startDateInput.value = formatDateToInput(start);
                     endDateInput.value = formatDateToInput(end);
@@ -506,21 +623,21 @@
                 console.log("No current marking period found.");
             }
         }
-        
+
         function formatDateToInput(date) {
             const d = new Date(date);
             let month = '' + (d.getMonth() + 1);
             let day = '' + d.getDate();
             let year = d.getFullYear();
-        
-            if (month.length < 2) 
+
+            if (month.length < 2)
                 month = '0' + month;
-            if (day.length < 2) 
+            if (day.length < 2)
                 day = '0' + day;
-        
+
             return [year, month, day].join('-');
         }
-  
+
         // Function to set up a tab with specified content
         function setupTabWithContent(tabName, contentId, containerId) {
           const navpills = document.getElementById('navpills');
@@ -539,7 +656,7 @@
                     tabLink.href = `#tab-${contentId}`;
                 }
               }
-      
+
               // Check if the tab content already exists
               let existingTabContent = document.getElementById(contentId);
               if (!existingTabContent) {
@@ -556,10 +673,10 @@
                       }
                   });
               }
-      
+
               // Move the existing content into the tab content
               moveContentToTab(existingTabContent, containerId);
-      
+
               // Ensure event listeners are added to the correct tab and content
               if (existingTab && existingTabContent) {
                   addTabEventListeners(existingTab, existingTabContent, `tab-${contentId}`);
@@ -568,7 +685,7 @@
               }
           }
         }
-  
+
         // Function to create a new tab
         function createTab(tabName, contentId) {
             const tab = document.createElement('li');
@@ -578,7 +695,7 @@
             tab.setAttribute('aria-controls', contentId);
             tab.setAttribute('aria-labelledby', `ui-id-${contentId}`);
             tab.setAttribute('aria-selected', 'false');
-  
+
             const tabLink = document.createElement('a');
             tabLink.className = 'ui-tabs-anchor';
             tabLink.href = `#tab-${contentId}`; // Ensure unique hash
@@ -586,17 +703,17 @@
             tabLink.setAttribute('tabindex', '-1');
             tabLink.id = `ui-id-${contentId}`; // Set the id for the tabLink
             tabLink.textContent = tabName;
-  
+
             tab.appendChild(tabLink);
             return tab;
         }
-  
+
         // Function to determine if a tab is a custom tab
         function isCustomTab(tab) {
           // Check if the tab has the 'custom-tab' class
           return tab.classList.contains('custom-tab');
         }
-  
+
         // Function to create tab content
         function createTabContent(contentId) {
             const content = document.createElement('div');
@@ -608,7 +725,7 @@
             content.style.display = 'none';
             return content;
         }
-  
+
         // Function to move a content container into the new tab content
         function moveContentToTab(newTabContent, containerId) {
           const contentContainer = document.getElementById(containerId);
@@ -616,41 +733,41 @@
               newTabContent.appendChild(contentContainer);
           }
         }
-  
+
         // Function to add event listeners for tab switching
         function addTabEventListeners(tab, content, hash) {
           if (!tab || !content) {
               console.error('Cannot add event listeners: Tab or content is null', { tab, content });
               return;
           }
-      
+
           tab.querySelector('a').addEventListener('click', (event) => {
             //event.preventDefault();
-            
+
             // Check if the tab is one of your custom tabs
             if (isCustomTab(tab)) {
                 // Prevent the POST request from being sent
                 event.preventDefault();
                 event.stopPropagation();
             }
-    
+
             switchTab(tab, content, hash);
           });
         }
-  
+
         // Function to add event listeners to existing tabs
         function addEventListenersToExistingTabs() {
           const existingTabs = document.querySelectorAll('#navpills li a');
           existingTabs.forEach(tabLink => {
               let contentId = tabLink.getAttribute('href').substring(1);
-      
+
               // Check if the href already starts with 'tab-'
               if (!contentId.startsWith('tab-')) {
                   const newHash = `#tab-${contentId}`;
                   tabLink.setAttribute('href', newHash);
                   contentId = `tab-${contentId}`; // Update contentId to match the new hash
               }
-      
+
               tabLink.addEventListener('click', (event) => {
                   event.preventDefault();
                   const parentTab = tabLink.parentElement;
@@ -659,44 +776,44 @@
               });
           });
         }
-  
+
         // Function to switch tabs
         function switchTab(tab, content, hash) {
           if (!tab || !content) {
               console.error('Tab or content is null:', { tab, content });
               return;
           }
-      
+
           const allTabs = document.querySelectorAll('#navpills li');
           allTabs.forEach(tab => {
               tab.classList.remove('ui-tabs-active', 'ui-state-active');
               tab.setAttribute('aria-selected', 'false');
               tab.setAttribute('tabindex', '-1');
           });
-      
+
           const allContent = document.querySelectorAll('.ui-tabs-panel');
           allContent.forEach(content => {
               content.setAttribute('aria-expanded', 'false');
               content.setAttribute('aria-hidden', 'true');
               content.style.display = 'none';
           });
-      
+
           tab.classList.add('ui-tabs-active', 'ui-state-active');
           tab.setAttribute('aria-selected', 'true');
           tab.setAttribute('tabindex', '0');
-      
+
           content.setAttribute('aria-expanded', 'true');
           content.setAttribute('aria-hidden', 'false');
           content.style.display = 'block';
-      
+
           // Update the URL hash
           window.location.hash = hash;
         }
-  
+
         function updateGroupWeightDisplay() {
           //const groupWeightingScheme = ENV.group_weighting_scheme; // Assuming ENV is globally accessible
           const groupWeightElements = document.querySelectorAll('.group-weight-percentage');
-      
+
           if (groupWeightingScheme === "equal") {
               groupWeightElements.forEach(element => {
                   element.style.display = 'none';
@@ -707,10 +824,10 @@
               });
           }
         }
-  
+
         function setupUI(submissions, assignmentGroups, enrollments) {
             console.log("setupUI Launched");
-  
+
             // Add CSS for various elements
             const style = document.createElement('style');
             style.textContent = `
@@ -756,14 +873,14 @@
             }
             `;
             document.head.appendChild(style);
-            
+
             // Create container for Custom Dates Elements
             const customDatesContainer = document.createElement('div');
             customDatesContainer.id = 'customDatesContainer';
             customDatesContainer.style.margin = '10px 0px';
             //customDatesContainer.style.position = 'relative';
             //customDatesContainer.style.left = '100px';
-  
+
             // Create input fields for custom date range
             const startDateInput = document.createElement('input');
             startDateInput.type = 'date';
@@ -773,7 +890,7 @@
             //startDateInput.style.position = 'relative';
             //startDateInput.style.left = '100px';
             startDateInput.placeholder = 'Start Date';
-  
+
             const endDateInput = document.createElement('input');
             endDateInput.type = 'date';
             endDateInput.id = 'customEndDate';
@@ -782,7 +899,7 @@
             //endDateInput.style.position = 'relative';
             //endDateInput.style.left = '100px';
             endDateInput.placeholder = 'End Date';
-  
+
             const CustomDatesLoadButton = document.createElement('button');
             CustomDatesLoadButton.id = 'CustomDatesLoadButton';
             CustomDatesLoadButton.className = 'Button';
@@ -795,17 +912,17 @@
                     displaySubmissionsWithCategories(submissions, assignmentGroups, 'customDates');
                 }, 500);
             });
-  
+
             // Append new elements to the document or a specific container
             customDatesContainer.appendChild(startDateInput);
             customDatesContainer.appendChild(endDateInput);
             customDatesContainer.appendChild(CustomDatesLoadButton);
-  
+
             waybetterGradebookContainer.appendChild(customDatesContainer);
-  
+
             // Call createStudentDropdown with enrollments data
             createStudentDropdown(enrollments);
-  
+
             const submissionsTable = document.createElement('table');
             const submissionsTableTBody = document.createElement('tbody');
             submissionsTableTBody.id = 'submissionsTableTBody';
@@ -833,39 +950,27 @@
             submissionsTable.appendChild(submissionsTableTBody);
             console.log("Original submissionsTable: ", submissionsTable);
             //waybetterGradebookContainer.appendChild(submissionsTable);
-  
+
             // Create drop down selector to choose from a set of predefined dates
             const timeFrameSelectorContainer = document.createElement('div');
             timeFrameSelectorContainer.id = 'timeFrameSelector';
             timeFrameSelectorContainer.style.margin = '10px 0px';
             //timeFrameSelectorContainer.style.position = 'relative';
             //timeFrameSelectorContainer.style.left = '100px';
-          
+
             const predefinedTimeFramesSelect = document.createElement('select');
             predefinedTimeFramesSelect.id = 'predefinedTimeFrames';
             predefinedTimeFramesSelect.style.margin = '10px 15px 5px 0px';
             predefinedTimeFramesSelect.innerHTML = `
               <option value="">Select a Time Frame</option>
               <option value="MP1Total">Marking Period 1</option>
-              <option value="MP1PC1">MP1 Progress Check 1</option>
-              <option value="MP1PC2">MP1 Progress Check 2</option>
-              <option value="MP1PC3">MP1 Progress Check 3</option>
               <option value="MP2Total">Marking Period 2</option>
-              <option value="MP2PC1">MP2 Progress Check 1</option>
-              <option value="MP2PC2">MP2 Progress Check 2</option>
-              <option value="MP2PC3">MP2 Progress Check 3</option>
               <option value="MP3Total">Marking Period 3</option>
-              <option value="MP3PC1">MP3 Progress Check 1</option>
-              <option value="MP3PC2">MP3 Progress Check 2</option>
-              <option value="MP3PC3">MP3 Progress Check 3</option>
               <option value="MP4Total">Marking Period 4</option>
-              <option value="MP4PC1">MP4 Progress Check 1</option>
-              <option value="MP4PC2">MP4 Progress Check 2</option>
-              <option value="MP4PC3">MP4 Progress Check 3</option>
               <option value="SchoolYearTotal">School Year</option>
               <!-- Add other predefined time frames here -->
             `;
-  
+
             predefinedTimeFramesSelect.addEventListener('change', function() {
                 console.log("predefinedTimeFramesSelect changed");
                 const timeFrameKey = this.value;
@@ -889,7 +994,7 @@
                     console.log('No time frame selected');
                 }
             });
-  
+
             const preDefinedTimeFramesLoadButton = document.createElement('button');
             preDefinedTimeFramesLoadButton.id = 'preDefinedTimeFramesLoadButton';
             preDefinedTimeFramesLoadButton.className = 'Button';
@@ -901,35 +1006,35 @@
                     displaySubmissionsWithCategories(submissions, assignmentGroups, 'predefinedDates');
                 }, 500);
             });
-  
+
             timeFrameSelectorContainer.appendChild(predefinedTimeFramesSelect);
             timeFrameSelectorContainer.appendChild(preDefinedTimeFramesLoadButton);
-  
+
             waybetterGradebookContainer.appendChild(timeFrameSelectorContainer);
             setDefaultTimeFrameForTimeFrameSelector();
             setCustomDatesForCurrentMarkingPeriod();
-  
+
             //const currentDate = '';
             //const currentMP = '';
             //const currentMPPC = '';
             //let datesLoaded = '';
-  
+
             const displayDiv = document.createElement('div');
             displayDiv.id = 'timeFrameDisplay';
             displayDiv.style.margin = '20px 0px';
             //displayDiv.style.position = 'relative';
             //displayDiv.style.left = '100px';
             displayDiv.innerHTML = ``;
-  
+
             waybetterGradebookContainer.appendChild(displayDiv);
             //updateDisplay();
             createTimeFramesDisplayInfo();
-  
+
             waybetterGradebookContainer.appendChild(submissionsTable);
-  
+
             // Add advanced settings UI
-            addAdvancedSettingsUI();
-  
+            addAdvancedSettingsUI(submissions, assignmentGroups);
+
             // Create css for the #submissionsTable
             const submissionsTableStyle = document.createElement('style');
             submissionsTableStyle.id = 'TheSubmissionsTableStyle';
@@ -943,30 +1048,30 @@
             }
             `;
             document.head.appendChild(submissionsTableStyle);
-  
+
             // Create a new div with the id 'studentInsightsComingSoon'
             const studentInsightsComingSoon = document.createElement('div');
             studentInsightsComingSoon.id = 'studentInsightsComingSoon';
             studentInsightsComingSoon.innerHTML = '<h3>Student Insights</h3><p><b>NOTE:</b> Additional Student Insights are in active development.</p></br>';
-  
+
             // Create a new div with the id 'studentInsightsData'
             const studentInsightsData = document.createElement('div');
             studentInsightsData.id = 'studentInsightsData';
             studentInsightsData.innerHTML = '<p>There was an error loading the Student Insights data.</p>';
-  
+
             // Append the new div to the studentInsightsContainer
             studentInsightsContainer.appendChild(studentInsightsComingSoon);
             studentInsightsContainer.appendChild(studentInsightsData);
-  
+
             // Create a new div with the id 'learningMasteryGradebook'
             const learningMasteryGradebook = document.createElement('div');
             learningMasteryGradebook.id = 'learningMasteryGradebook';
             learningMasteryGradebook.innerHTML = '<h3>Learning Mastery Gradebook is not enabled for this course.</h3>';
-  
+
             // Append the new div to the studentInsightsContainer
             //learningMasteryGradebookContainer.appendChild(learningMasteryGradebook);
-  
-  
+
+
             // Setup transitions for elements
             const waybetterGradebookContainerId = document.getElementById('waybetterGradebookContainer');
             const studentInsightsContainerId = document.getElementById('studentInsightsContainer');
@@ -978,7 +1083,7 @@
             const timeFrameDisplayId = document.getElementById('timeFrameDisplay');
             const submissionsTableId = document.getElementById('submissionsTable');
             //const submissionsTableTBodyId = document.getElementById('submissionsTableTBody'); // This one doesn't really do anything, yet
-  
+
             // Apply transition class
             [waybetterGradebookContainerId, customDatesContainerId, timeFrameSelectorId, timeFrameDisplayId, submissionsTableId, studentInsightsContainerId, assignmentsId, outcomesId, navpillsId].forEach(element => {
                 if (element) {
@@ -986,12 +1091,12 @@
                     setTimeout(() => element.style.opacity = 1, 10); // Delay slightly to ensure the class applies
                 }
             });
-  
+
             // Additional check for navpillsId
             if (navpillsId) {
                 navpillsId.style.display = 'block';
             }
-  
+
             preDefinedTimeFramesLoadButton.addEventListener('click', () => {
                 const submissionsTableTBody = document.getElementById('submissionsTable').querySelector('tbody');
                 //submissionsTableTBody.innerHTML = ''; // Clear existing content
@@ -1003,7 +1108,7 @@
                     submissionsTableTBody.style.opacity = '1';
                 }, 500); // Delay to allow the fade-out effect to complete
             });
-  
+
             CustomDatesLoadButton.addEventListener('click', () => {
                 const submissionsTableTBody = document.getElementById('submissionsTable').querySelector('tbody');
                 //submissionsTableTBody.innerHTML = ''; // Clear existing content
@@ -1015,7 +1120,7 @@
                     submissionsTableTBody.style.opacity = '1';
                 }, 500); // Delay to allow the fade-out effect to complete
             });
-  
+
             preDefinedTimeFramesLoadButton.addEventListener('click', () => {
                 const currentDateDisplay = document.getElementById('currentDateDisplay');
                 const datesLoadedDisplay = document.getElementById('datesLoadedDisplay');
@@ -1028,7 +1133,7 @@
                     datesLoadedDisplay.style.opacity = '1';
                 }, 500); // Delay to allow the fade-out effect to complete
             });
-  
+
             CustomDatesLoadButton.addEventListener('click', () => {
                 const currentDateDisplay = document.getElementById('currentDateDisplay');
                 const datesLoadedDisplay = document.getElementById('datesLoadedDisplay');
@@ -1041,12 +1146,12 @@
                     datesLoadedDisplay.style.opacity = '1';
                 }, 500); // Delay to allow the fade-out effect to complete
             });
-  
+
             function preDefinedTimeFramesLoadButtonClick() {
                 if (preDefinedTimeFramesLoadButton) {
                     // Somewhat hacky way to set the default time frame to MP4Total if no time frame is selected
                     // We're only doing this temporarily while we're testing and it's outside of the school year
-                    // Comment this out when school is back in session and we want to use the current selected time frame. Instead 
+                    // Comment this out when school is back in session and we want to use the current selected time frame. Instead
                     // just use preDefinedTimeFramesLoadButton.click();
                     const selectElement = document.getElementById('predefinedTimeFrames');
                     console.log("selectElement.value: " + selectElement.value);
@@ -1065,89 +1170,118 @@
                 }
             }
             preDefinedTimeFramesLoadButtonClick();
-  
+
             function createStudentDropdown(enrollments) {
                 console.log("Setting up student dropdown");
                 const currentUserId = window.location.pathname.split('/').pop(); // Get the current student ID from the URL
                 const container = document.getElementById('print-grades-container');
-            
+
                 // Create new div for student dropdown
                 const studentNamesContainer = document.createElement('div');
                 studentNamesContainer.id = 'student-names-container';
                 studentNamesContainer.style.marginBottom = '15px';
                 studentNamesContainer.classList.add('transition-element'); // Add transition class
-            
+
                 // Create dropdown menu
                 const dropdown = document.createElement('select');
                 dropdown.id = 'student-dropdown';
                 dropdown.style.margin = '10px 15px 5px 0px'; // Apply the dropdown margin styles
-            
+
                 // Helper function to strip the domain from a URL
                 function stripDomain(url) {
                     const urlObj = new URL(url);
                     return urlObj.pathname;
                 }
-            
+
                 // Use a Set to track unique user IDs
                 const uniqueUserIds = new Set();
-  
+
                 // Populate dropdown with student short names
                 enrollments.forEach(enrollment => {
                     const userId = enrollment.user.id;
                     if (!uniqueUserIds.has(userId)) {
                         uniqueUserIds.add(userId); // Add the user ID to the set
-  
+
                         const option = document.createElement('option');
                         option.value = stripDomain(enrollment.grades.html_url); // Use the stripped URL without domain
                         option.setAttribute('data-user-id', userId); // Store the user ID
                         option.textContent = enrollment.user.short_name; // Use short_name instead of name
-  
+
                         // Set the default selected value to the current user
                         if (userId == currentUserId) {
                             option.selected = true;
                         }
-  
+
                         dropdown.appendChild(option);
                     }
                 });
-            
-                // Create Apply button
+
+                // Loads the currently-selected student's grade page with a full page reload.
+                // This is the one action that reliably gets fresh data everywhere -- including
+                // ENV (effective_due_dates, grading_period_set, etc.), which is baked into the
+                // page by Canvas at initial render and does NOT update via any of this script's
+                // API calls. Shared by both the "Load Student Data" button (dropdown selection)
+                // and the refresh icon (reloads the current student without touching the dropdown).
+                function loadStudentData(selectedUrl) {
+                    const selectedUrlWithQueryParam = `${selectedUrl}?thewaybettergradebook=true`; // Append the query parameter
+                    window.location.href = selectedUrlWithQueryParam; // Redirect to the new URL
+                }
+
+                // Create Load Student Data button
                 const applyButton = document.createElement('button');
-                applyButton.textContent = 'Apply';
+                applyButton.textContent = 'Load Student Data';
                 applyButton.classList.add('Button'); // Add class "Button"
                 applyButton.classList.add('Button--primary'); // Add class "Button--primary"
                 applyButton.style.margin = '10px 15px 5px 0px'; // Add the desired margin styles
                 applyButton.onclick = () => {
                     const selectedOption = dropdown.options[dropdown.selectedIndex];
-                    const selectedUrl = selectedOption.value; // Get the stripped grade URL
-                    const selectedUrlWithQueryParam = `${selectedUrl}?thewaybettergradebook=true`; // Append the query parameter
-                    window.location.href = selectedUrlWithQueryParam; // Redirect to the new URL
+                    loadStudentData(selectedOption.value); // Get the stripped grade URL
                 };
-            
-                // Append dropdown and button to the new container
+
+                // Create refresh icon button -- a shortcut for "reload the current student's data"
+                // without needing to touch the dropdown first. Fires the same loadStudentData()
+                // logic, using the current page's own URL (dropdown selection is ignored here).
+                // Styled identically to the Load Student Data button (same classes/margin) so the
+                // two sit together as a matched pair, just swapping text for Canvas's icon-refresh icon.
+                const refreshStudentDataButton = document.createElement('button');
+                refreshStudentDataButton.id = 'refreshStudentDataButton';
+                refreshStudentDataButton.type = 'button';
+                refreshStudentDataButton.classList.add('Button'); // Add class "Button"
+                refreshStudentDataButton.classList.add('Button--primary'); // Add class "Button--primary"
+                refreshStudentDataButton.style.margin = '10px 15px 5px 0px'; // Add the desired margin styles
+                refreshStudentDataButton.title = 'Refresh this student\'s data';
+                refreshStudentDataButton.setAttribute('aria-label', 'Refresh this student\'s data');
+                refreshStudentDataButton.innerHTML = '<i class="icon-refresh" aria-hidden="true"></i>';
+                refreshStudentDataButton.onclick = () => {
+                    // Reload the current page as-is; ignores whatever is selected in the dropdown.
+                    loadStudentData(window.location.pathname);
+                };
+
+                // Append dropdown and buttons to the new container
                 studentNamesContainer.appendChild(dropdown);
                 studentNamesContainer.appendChild(applyButton);
-            
+                studentNamesContainer.appendChild(refreshStudentDataButton);
+
                 // Insert the new div right after #print-grades-container
                 container.parentNode.insertBefore(studentNamesContainer, container.nextSibling);
-            
+
                 // Ensure the studentNamesContainer is visible
                 studentNamesContainer.style.opacity = 0; // Start with opacity 0
                 setTimeout(() => studentNamesContainer.style.opacity = 1, 10); // Fade in
             }
-  
+
             function createMessageStudentButton(enrollments) {
               // This function creates a button to message a student
               console.log("createMessageStudentButton - Setting up message student button");
               const studentGradesShowAll = document.getElementById('student-grades-show-all');
               if (!studentGradesShowAll) return; // Exit if the element doesn't exist
-      
+
               //const currentUserId = window.location.pathname.split('/').pop(); // Get the current student ID from the URL
               const currentUserId = studentId;
               console.log("createMessageStudentButton - currentUserId: " + currentUserId);
               const currentEnrollment = enrollments.find(enrollment => enrollment.user.id == currentUserId);
               //console.log("createMessageStudentButton - currentEnrollment: " + currentEnrollment);
-      
+
               if (currentEnrollment) {
                   const studentShortName = currentEnrollment.user.short_name;
                   console.log("createMessageStudentButton - studentShortName: " + studentShortName);
@@ -1156,14 +1290,14 @@
                   //const studentId = currentEnrollment.user.id;
                   //const baseUrl = window.location.origin; // Assuming base URL is the current origin
                   //const courseId = window.location.pathname.split('/')[2]; // Assuming courseId is in the URL path
-      
+
                   const messageStudentDiv = document.createElement('div');
                   messageStudentDiv.id = 'messageStudent';
                   messageStudentDiv.style.display = 'block';
                   messageStudentDiv.style.margin = '5px 0px 0px 0px';
                   messageStudentDiv.style.maxWidth = '240px';
                   messageStudentDiv.classList.add('transition-element'); // Add transition class
-      
+
                   const messageButton = document.createElement('button');
                   messageButton.className = 'Button';
                   messageButton.style.maxWidth = '240px';
@@ -1171,29 +1305,29 @@
                   messageButton.style.wordWrap = 'break-word';
                   //messageButton.innerHTML = `<i class="icon-email" aria-hidden="true"></i> Message ${studentFirstName}`;
                   messageButton.innerHTML = `<i class="icon-email" aria-hidden="true"></i> Message ${studentShortName}`;
-      
+
                   messageButton.addEventListener('click', () => {
                       const userNameEncoded = encodeURIComponent(studentShortName);
                       const messageUrl = `${baseUrl}/conversations?context_id=course_${courseId}&user_id=${studentId}&user_name=${userNameEncoded}`;
                       window.open(messageUrl, '_blank');
                   });
-      
+
                   messageStudentDiv.appendChild(messageButton);
                   studentGradesShowAll.parentNode.insertBefore(messageStudentDiv, studentGradesShowAll.nextSibling);
-  
+
                   // Ensure the messageStudentDiv is visible with a fade-in effect
                   messageStudentDiv.style.opacity = 0; // Start with opacity 0
                   setTimeout(() => messageStudentDiv.style.opacity = 1, 10); // Fade in
               }
             }
             createMessageStudentButton(enrollments);
-  
+
             // Function to get the first name of the current student from enrollments
             function getStudentFirstName(enrollments) {
               //const currentUserId = window.location.pathname.split('/').pop(); // Get the current student ID from the URL
               const currentUserId = studentId;
               const currentEnrollment = enrollments.find(enrollment => enrollment.user.id == currentUserId);
-  
+
               if (currentEnrollment) {
                   console.log("inside getStudentFirstName function");
                   const studentShortName = currentEnrollment.user.short_name;
@@ -1206,7 +1340,7 @@
             studentFirstNamefromEnrollments = studentFirstName;
             console.log("studentFirstName: " + studentFirstName);
             console.log("studentFirstNamefromEnrollments: " + studentFirstNamefromEnrollments);
-  
+
             // Ensure jQuery and jQuery UI are loaded and setup the navpills and tabs
             $(function() {
               $.widget("custom.tabManager", {
@@ -1215,31 +1349,31 @@
                       dataFetched: {}, // Track fetched data for each tab
                       defaultTab: 'waybetterGradebookContent' // Set the default tab content ID
                   },
-          
+
                   _create: function() {
                       this._setupTabs();
                       this._addEventListenersToExistingTabs();
                       this._activateDefaultTab(); // Activate the default tab on initialization
                   },
-          
+
                   _setupTabs: function() {
                     const navpills = this._getOrCreateNavpills();
-  
+
                     // Always create the Assignments tab first
                     this._setupTabWithContent('Assignments', 'assignments', 'assignmentsContainer', navpills);
-  
+
                     if (this.options.courseOutcomesEnabled) {
                         // Create Learning Mastery tab second if courseOutcomesEnabled is true
                         this._setupTabWithContent('Learning Mastery', 'outcomes', 'outcomesContainer', navpills);
                     }
-  
+
                     // Create the Waybetter Gradebook tab
                     this._setupTabWithContent('Waybetter Gradebook', 'waybetterGradebookContent', 'waybetterGradebookContainer', navpills);
-  
+
                     // Finally, create the Student Insights tab
                     this._setupTabWithContent('Student Insights', 'studentInsightsContent', 'studentInsightsContainer', navpills);
                   },
-          
+
                   _getOrCreateNavpills: function() {
                       let navpills = $('#navpills');
                       if (!navpills.length) {
@@ -1251,7 +1385,7 @@
                                   class: 'ui-tabs-nav ui-helper-reset ui-helper-clearfix ui-widget-header ui-corner-all',
                                   role: 'tablist'
                               }).appendTo(contentDiv);
-          
+
                               const gradeSummaryDiv = $('#GradeSummarySelectMenuGroup');
                               if (gradeSummaryDiv.length) {
                                   gradeSummaryDiv.after(navpills);
@@ -1260,7 +1394,7 @@
                       }
                       return navpills;
                   },
-          
+
                   _setupTabWithContent: function(tabName, contentId, containerId, navpills) {
                       let existingTab = navpills.find(`li[aria-controls="${contentId}"]`);
                       if (!existingTab.length) {
@@ -1270,7 +1404,7 @@
                       } else {
                           existingTab.find('a').attr('href', `#tab-${contentId}`);
                       }
-          
+
                       let existingTabContent = $(`#${contentId}`);
                       if (!existingTabContent.length) {
                           existingTabContent = this._createTabContent(contentId);
@@ -1278,11 +1412,11 @@
                       } else {
                           this._ensureClasses(existingTabContent, ['ui-tabs-panel', 'ui-widget-content', 'ui-corner-bottom']);
                       }
-          
+
                       this._moveContentToTab(existingTabContent, containerId);
                       this._addTabEventListeners(existingTab, existingTabContent, `tab-${contentId}`);
                   },
-          
+
                   _createTab: function(tabName, contentId) {
                       return $('<li>', {
                           class: 'ui-state-default ui-corner-top custom-tab',
@@ -1300,7 +1434,7 @@
                           text: tabName
                       }));
                   },
-          
+
                   _createTabContent: function(contentId) {
                       return $('<div>', {
                           id: contentId,
@@ -1311,7 +1445,7 @@
                           css: { display: 'none' }
                       });
                   },
-          
+
                   _ensureClasses: function(element, classes) {
                       classes.forEach(cls => {
                           if (!element.hasClass(cls)) {
@@ -1319,14 +1453,14 @@
                           }
                       });
                   },
-          
+
                   _moveContentToTab: function(newTabContent, containerId) {
                       const contentContainer = $(`#${containerId}`);
                       if (contentContainer.length && !$.contains(newTabContent[0], contentContainer[0])) {
                           newTabContent.append(contentContainer);
                       }
                   },
-          
+
                   _addTabEventListeners: function(tab, content, hash) {
                       tab.find('a').on('click', (event) => {
                           if (this._isCustomTab(tab)) {
@@ -1336,7 +1470,7 @@
                           this._handleTabClick(content.attr('id'));
                       });
                   },
-          
+
                   _addEventListenersToExistingTabs: function() {
                       $('#navpills li a').each((_, tabLink) => {
                           const contentId = $(tabLink).attr('href').substring(1);
@@ -1346,7 +1480,7 @@
                           });
                       });
                   },
-          
+
                   _handleTabClick: function(contentId) {
                       if (!this.options.dataFetched[contentId]) {
                           this._fetchDataForTab(contentId);
@@ -1354,7 +1488,7 @@
                       }
                       this._switchTab(contentId);
                   },
-          
+
                   _fetchDataForTab: function(contentId) {
                       if (contentId === 'outcomes') {
                           // Fetch data logic here
@@ -1362,32 +1496,32 @@
                           // Example: $.get('/data', { id: contentId }, (data) => { /* handle data */ });
                       }
                   },
-          
+
                   _switchTab: function(contentId) {
                       const tab = $(`#navpills li[aria-controls="${contentId}"]`);
                       const content = $(`#${contentId}`);
-          
+
                       if (!tab.length || !content.length) {
                           //console.error('Tab or content is null:', { tab, content });
                           return;
                       }
-          
+
                       $('#navpills li').removeClass('ui-tabs-active ui-state-active')
                           .attr('aria-selected', 'false')
                           .attr('tabindex', '-1');
-          
+
                       $('.ui-tabs-panel').attr('aria-expanded', 'false')
                           .attr('aria-hidden', 'true')
                           .css('display', 'none');
-          
+
                       tab.addClass('ui-tabs-active ui-state-active')
                           .attr('aria-selected', 'true')
                           .attr('tabindex', '0');
-          
+
                       content.attr('aria-expanded', 'true')
                           .attr('aria-hidden', 'false')
                           .css('display', 'block');
-  
+
                       // Check if the tab's href contains "outcomes"
                       const tabLink = tab.find('a');
                       if (tabLink.attr('href').includes('outcomes')) {
@@ -1395,40 +1529,40 @@
                       } else {
                           $('.outcome-toggles').css('display', 'none');
                       }
-          
+
                       // Use history.pushState to update the URL without jumping
                       const newUrl = `${window.location.pathname}#tab-${contentId}`;
                       history.pushState(null, '', newUrl);
                   },
-  
+
                   _activateDefaultTab: function() {
                       const defaultTabId = this.options.defaultTab;
                       this._switchTab(defaultTabId);
                   },
-          
+
                   _isCustomTab: function(tab) {
                       return tab.hasClass('custom-tab');
                   }
               });
-          
+
               // Initialize the tab manager
               $('#content').tabManager({
                   courseOutcomesEnabled: courseOutcomesEnabled
               });
-  
+
               // Function to move the GradeSummarySelectMenuGroup div into the assignments tab
               function moveGradeSummarySelectMenuGroup() {
                 const gradeSummaryDiv = $('#GradeSummarySelectMenuGroup');
                 const assignmentsContent = $('#assignments');
                 const ariaAnnouncer = $('#aria-announcer');
-  
+
                 if (gradeSummaryDiv.length && assignmentsContent.length) {
                     // Add the class 'transition-element' to gradeSummaryDiv
                     gradeSummaryDiv.addClass('transition-element').css({
                       display: 'block',
                       opacity: 1
                     });
-  
+
                     if (ariaAnnouncer.length) {
                         // Move the gradeSummaryDiv inside the assignmentsContent
                         // and place it directly after the ariaAnnouncer
@@ -1439,44 +1573,44 @@
                     }
                 }
               }
-  
-              // Call the function after the tab manager is initialized - Not needed, 
+
+              // Call the function after the tab manager is initialized - Not needed,
               // also causes weird jumpy behavior on initial load
               /*$('#content').on('tabsactivate', function(event, ui) {
                   moveGradeSummarySelectMenuGroup();
               });*/
-  
+
               // Also call it once on document ready to ensure it's moved initially
               moveGradeSummarySelectMenuGroup();
             });
-  
-  
+
+
         }
-  
-        function addAdvancedSettingsUI() {
+
+        function addAdvancedSettingsUI(submissions, assignmentGroups) {
             const studentGradesRightContent = document.getElementById('student-grades-right-content');
             if (!studentGradesRightContent) return; // Exit if the parent element doesn't exist
-        
+
             const advancedSettingsDiv = document.createElement('div');
             advancedSettingsDiv.id = 'TheWaybetterGradebookAdvancedSettings';
             studentGradesRightContent.appendChild(advancedSettingsDiv);
-        
+
             const advancedSettingsAccordionButton = document.createElement('button');
             advancedSettingsAccordionButton.textContent = 'The Waybetter Gradebook Advanced Settings';
             advancedSettingsAccordionButton.className = 'advancedSettingsAccordion Button';
             advancedSettingsDiv.appendChild(advancedSettingsAccordionButton);
-        
+
             const advancedSettingsAccordionPanelDiv = document.createElement('div');
             advancedSettingsAccordionPanelDiv.className = 'advancedSettingsAccordionPanel';
             advancedSettingsDiv.appendChild(advancedSettingsAccordionPanelDiv);
-  
+
             // Create table element
             const advancedSettingsTable = document.createElement('table');
             advancedSettingsTable.className = 'summary';
-  
+
             // Create a row for the checkbox and label
             const advancedSettingsRow = document.createElement('tr');
-  
+
             // Create a cell for the checkbox
             const advancedSettingsCheckboxCell = document.createElement('td');
             const gradesNormalizedTo100PercentCheckbox = document.createElement('input');
@@ -1490,25 +1624,25 @@
                 gradesNormalizedTo100PercentCheckbox.checked = false;
             }
             advancedSettingsCheckboxCell.appendChild(gradesNormalizedTo100PercentCheckbox);
-  
+
             // Create a cell for the label
             const labelCell = document.createElement('td');
             const label = document.createElement('label');
             label.htmlFor = 'gradesNormalizedTo100PercentCheckbox';
             label.textContent = 'Normalize Assignment Groups to 100%';
             labelCell.appendChild(label);
-  
+
             // Append cells to the row
             //advancedSettingsRow.appendChild(advancedSettingsCheckboxCell);
             advancedSettingsRow.appendChild(labelCell);
             advancedSettingsRow.appendChild(advancedSettingsCheckboxCell);
-  
+
             // Append the row to the table
             advancedSettingsTable.appendChild(advancedSettingsRow);
-  
+
             // Create a row for the autoSelectPastDueCheckbox setting
             const autoSelectPastDueCheckboxRow = document.createElement('tr');
-  
+
             // Create a cell for the checkbox
             const autoSelectPastDueCheckboxCell = document.createElement('td');
             const autoSelectPastDueCheckbox = document.createElement('input');
@@ -1516,35 +1650,64 @@
             autoSelectPastDueCheckbox.id = 'autoSelectPastDueCheckbox';
             autoSelectPastDueCheckbox.checked = true; // Default to checked
             autoSelectPastDueCheckboxCell.appendChild(autoSelectPastDueCheckbox);
-  
+
             // Create a cell for the label
             const autoSelectPastDueLabelCell = document.createElement('td');
             const autoSelectPastDueLabel = document.createElement('label');
             autoSelectPastDueLabel.htmlFor = 'autoSelectPastDueCheckbox';
             autoSelectPastDueLabel.textContent = 'Automatically Select Past Due Assignments Only';
             autoSelectPastDueLabelCell.appendChild(autoSelectPastDueLabel);
-  
+
             // Append cells to the row
             autoSelectPastDueCheckboxRow.appendChild(autoSelectPastDueLabelCell);
             autoSelectPastDueCheckboxRow.appendChild(autoSelectPastDueCheckboxCell);
-  
+
             // Append the row to the table
             advancedSettingsTable.appendChild(autoSelectPastDueCheckboxRow);
-        
+
+            // Create a row for the useCanvasGradingPeriodsCheckbox setting
+            // Defaults to checked (Canvas's live grading_period_set dates). Uncheck this to fall
+            // back to the hardcoded MP1-MP4 dates -- mainly useful for troubleshooting why an
+            // assignment isn't showing up where expected. Session-only; resets to checked on
+            // every page load, same as the other Advanced Settings checkboxes.
+            const useCanvasGradingPeriodsCheckboxRow = document.createElement('tr');
+
+            // Create a cell for the checkbox
+            const useCanvasGradingPeriodsCheckboxCell = document.createElement('td');
+            const useCanvasGradingPeriodsCheckbox = document.createElement('input');
+            useCanvasGradingPeriodsCheckbox.type = 'checkbox';
+            useCanvasGradingPeriodsCheckbox.id = 'useCanvasGradingPeriodsCheckbox';
+            useCanvasGradingPeriodsCheckbox.checked = true; // Default to checked (Canvas dates)
+            useCanvasGradingPeriodsCheckboxCell.appendChild(useCanvasGradingPeriodsCheckbox);
+
+            // Create a cell for the label
+            const useCanvasGradingPeriodsLabelCell = document.createElement('td');
+            const useCanvasGradingPeriodsLabel = document.createElement('label');
+            useCanvasGradingPeriodsLabel.htmlFor = 'useCanvasGradingPeriodsCheckbox';
+            useCanvasGradingPeriodsLabel.textContent = 'Use Canvas Grading Period Dates (uncheck to use hard-coded dates)';
+            useCanvasGradingPeriodsLabelCell.appendChild(useCanvasGradingPeriodsLabel);
+
+            // Append cells to the row
+            useCanvasGradingPeriodsCheckboxRow.appendChild(useCanvasGradingPeriodsLabelCell);
+            useCanvasGradingPeriodsCheckboxRow.appendChild(useCanvasGradingPeriodsCheckboxCell);
+
+            // Append the row to the table
+            advancedSettingsTable.appendChild(useCanvasGradingPeriodsCheckboxRow);
+
             /*const gradesNormalizedTo100PercentCheckbox = document.createElement('input');
             gradesNormalizedTo100PercentCheckbox.type = 'checkbox';
             gradesNormalizedTo100PercentCheckbox.id = 'gradesNormalizedTo100PercentCheckbox';
             gradesNormalizedTo100PercentCheckbox.checked = false;
-        
+
             const label = document.createElement('label');
             label.htmlFor = 'gradesNormalizedTo100PercentCheckbox';
             label.textContent = 'Normalize Assignment Groups to 100%';
-        
+
             advancedSettingsAccordionPanelDiv.appendChild(label);
             advancedSettingsAccordionPanelDiv.appendChild(gradesNormalizedTo100PercentCheckbox);*/
-  
+
             advancedSettingsAccordionPanelDiv.appendChild(advancedSettingsTable);
-        
+
             // Add CSS for accordion
             const style = document.createElement('style');
             style.textContent = `
@@ -1562,7 +1725,7 @@
                 transition: 0.2s;
                 position: relative; /* Needed for absolute positioning of the pseudo-element */
             }
-            
+
             .advancedSettingsAccordion::before {
                 content: '▶'; /* Unicode character for a right-pointing arrow */
                 font-size: 15px;
@@ -1572,11 +1735,11 @@
                 transform: translateY(-50%); /* Adjust vertical position to truly center */
                 transition: transform 0.2s ease-in-out; /* Apply easing to the transformation */
             }
-            
+
             .advancedSettingsAccordion.active::before {
                 transform: translateY(-50%) rotate(90deg); /* Rotates the arrow to point downwards */
             }
-            
+
             .advancedSettingsAccordionPanel {
                 padding: 0 18px;
                 max-height: 0;
@@ -1586,7 +1749,7 @@
                 visibility: hidden;
                 transition: max-height 0.2s ease-in-out, opacity 0.4s ease-in-out, visibility 0.4s ease-in-out;
             }
-            
+
             .advancedSettingsAccordion.active + .advancedSettingsAccordionPanel {
                 max-height: 500px; /* Adjust as needed for your content */
                 opacity: 1;
@@ -1594,12 +1757,12 @@
             }
             `;
             document.head.appendChild(style);
-        
+
             // Advanced Settings Accordion functionality
             advancedSettingsAccordionButton.addEventListener('click', function() {
                 this.classList.toggle('active');
                 const advancedSettingsAccordionPanel = this.nextElementSibling;
-  
+
                 // Toggle the visibility using CSS transitions instead of directly setting display
                 if (this.classList.contains('active')) {
                     advancedSettingsAccordionPanel.style.maxHeight = advancedSettingsAccordionPanel.scrollHeight + "px";
@@ -1611,15 +1774,31 @@
                     advancedSettingsAccordionPanel.style.visibility = "hidden";
                 }
             });
-        
+
             // Checkbox functionality
             /*gradesNormalizedTo100PercentCheckbox.addEventListener('change', function() {
                 recalculateTotals(); // Directly call recalculateTotals which handles the logic internally
             });*/
-  
+
+            // useCanvasGradingPeriodsCheckbox functionality: re-derive the active marking period
+            // time frames, refresh the #timeFrameDisplay info so it always reflects the source
+            // currently in use, and -- if a predefined marking period is currently the loaded
+            // view -- re-render the table immediately so the effect of the toggle is visible
+            // right away without requiring a separate "Load Time Frame" click. Session-only:
+            // this setting is not persisted and always resets to checked on the next page load.
+            document.getElementById('useCanvasGradingPeriodsCheckbox').addEventListener('change', () => {
+                refreshMarkingPeriodSource();
+                updateTimeFramesDisplayInfo();
+
+                const timeFrameSelector = document.getElementById('predefinedTimeFrames');
+                if (timeFrameSelector && timeFrameSelector.value) {
+                    displaySubmissionsWithCategories(submissions, assignmentGroups, 'predefinedDates');
+                }
+            });
+
             // Set default recalculate function
             //window.recalculateTotals = recalculateTotals; // Ensure recalculateTotals is called for any other needed context
-  
+
             // Setup transitions for elements
             const TheWaybetterGradebookAdvancedSettingsId = document.getElementById('TheWaybetterGradebookAdvancedSettings');
             // Apply transition class
@@ -1630,35 +1809,35 @@
                 }
             });
         }
-  
+
         function formatDateYYYYMMDD(date) {
             const d = new Date(date);
             let month = '' + (d.getMonth() + 1);
             let day = '' + d.getDate();
             let year = d.getFullYear();
-  
-            if (month.length < 2) 
+
+            if (month.length < 2)
                 month = '0' + month;
-            if (day.length < 2) 
+            if (day.length < 2)
                 day = '0' + day;
-  
+
             return [year, month, day].join('-');
         }
-  
+
         function formatDateMMDDYYYY(date) {
             const d = new Date(date);
             let month = '' + (d.getMonth() + 1);
             let day = '' + d.getDate();
             let year = d.getFullYear();
-  
-            if (month.length < 2) 
+
+            if (month.length < 2)
                 month = '0' + month;
-            if (day.length < 2) 
+            if (day.length < 2)
                 day = '0' + day;
-  
+
             return [month, day, year].join('/');
         }
-  
+
         function formatNumber(value) {
             if (value % 1 === 0) { // Check if it's a whole number
                 return value.toString(); // Return as a string without decimals
@@ -1666,17 +1845,17 @@
                 return value.toFixed(2); // Return with two decimal places
             }
         }
-  
+
         function formatNumberToWhole(value) {
             return Math.round(value).toString(); // Round to nearest whole number and convert to string
         }
-  
+
         // Helper function to capitalize the first letter of a string
         function capitalizeFirstLetter(string) {
           if (!string) return '';
           return string.charAt(0).toUpperCase() + string.slice(1);
         }
-  
+
         function clearSubmissionsTable() {
             const submissionsTable = document.getElementById('submissionsTable');
             console.log("submissionsTable: ", submissionsTable);
@@ -1732,12 +1911,12 @@
             //submissionsTableTBody.appendChild(submissionsTable);
             //addCheckAllNoneLink();
         }
-  
+
         function clearSubmissionsTableTBody() {
             const submissionsTableTBody = document.getElementById('submissionsTableTBody');
             submissionsTableTBody.innerHTML = '';
         }
-  
+
         function animateSubmissionsTableTBodyTrTd() {
             const rowsTD = document.querySelectorAll('#submissionsTableTBody tr td');
             rowsTD.forEach(rowTD => {
@@ -1749,7 +1928,7 @@
                 }, 500);
             });
         }
-  
+
         function animateCurrentDateDisplay() {
             const currentDateDisplay = document.getElementById('currentDateDisplay');
             currentDateDisplay.classList.add('animate');
@@ -1757,7 +1936,7 @@
                 currentDateDisplay.classList.remove('animate');
             }, 500);
         }
-  
+
         function animateDatesLoadedDisplay() {
             const datesLoadedDisplay = document.getElementById('datesLoadedDisplay');
             datesLoadedDisplay.classList.add('animate');
@@ -1765,12 +1944,12 @@
                 datesLoadedDisplay.classList.remove('animate');
             }, 500);
         }
-  
+
         //setupUI();
-  
+
         // Function to create and append the "Course Totals" table
         // Should I leave this createCourseTotalsTable() here, or move it back into the displaySubmissionsWithCategories function?
-        // Whatever happens, it needs to have a way to clear it, or not reproduce it each time 
+        // Whatever happens, it needs to have a way to clear it, or not reproduce it each time
         // the displaySubmissionsWithCategories() function is executed
         function createCourseTotalsTable() {
             // Create table and its elements
@@ -1780,11 +1959,11 @@
             //CourseTotalsTable.style.position = 'relative';
             //CourseTotalsTable.style.left = '100px';
             CourseTotalsTable.className = "ic-Table ic-Table--hover-row ic-Table--grades-summary-table";
-        
+
             const caption = document.createElement('caption');
             caption.textContent = 'Course Totals';
             CourseTotalsTable.appendChild(caption);
-        
+
             const thead = document.createElement('thead');
             const headerRow = document.createElement('tr');
             const headers = ["Marking Periods", "Points Earned", "Points Available", "Percentage", "Include"];
@@ -1795,70 +1974,58 @@
             });
             thead.appendChild(headerRow);
             CourseTotalsTable.appendChild(thead);
-        
+
             const tbody = document.createElement('tbody');
             CourseTotalsTable.appendChild(tbody);
-        
+
             // Define the rows to be added
             const rows = [
             { title: "Marking Period 1", class: "", periodId: "MP1Total", pointsEarnedId: "MP1 Total Points Earned", pointsAvailableId: "MP1 Total Points Available", percentageEarnedId: "MP1 Total Percentage Earned", ESWeight: "25", MSWeight: "25", HSWeight: "20" },
-            { title: "MP1 Progress Check 1", class: "indent", periodId: "MP1PC1", pointsEarnedId: "MP1PC1 Points Earned", pointsAvailableId: "MP1PC1 Total Points Available", percentageEarnedId: "MP1PC1 Total Percentage Earned" },
-            { title: "MP1 Progress Check 2", class: "indent", periodId: "MP1PC2", pointsEarnedId: "MP1PC2 Points Earned", pointsAvailableId: "MP1PC2 Total Points Available", percentageEarnedId: "MP1PC2 Total Percentage Earned" },
-            { title: "MP1 Progress Check 3", class: "indent", periodId: "MP1PC3", pointsEarnedId: "MP1PC3 Points Earned", pointsAvailableId: "MP1PC3 Total Points Available", percentageEarnedId: "MP1PC3 Total Percentage Earned" },
             { title: "Marking Period 2", class: "", periodId: "MP2Total", pointsEarnedId: "MP2 Total Points Earned", pointsAvailableId: "MP2 Total Points Available", percentageEarnedId: "MP2 Total Percentage Earned", ESWeight: "25", MSWeight: "25", HSWeight: "20" },
-            { title: "MP2 Progress Check 1", class: "indent", periodId: "MP2PC1", pointsEarnedId: "MP2PC1 Points Earned", pointsAvailableId: "MP2PC1 Total Points Available", percentageEarnedId: "MP2PC1 Total Percentage Earned" },
-            { title: "MP2 Progress Check 2", class: "indent", periodId: "MP2PC2", pointsEarnedId: "MP2PC2 Points Earned", pointsAvailableId: "MP2PC2 Total Points Available", percentageEarnedId: "MP2PC2 Total Percentage Earned" },
-            { title: "MP2 Progress Check 3", class: "indent", periodId: "MP2PC3", pointsEarnedId: "MP2PC3 Points Earned", pointsAvailableId: "MP2PC3 Total Points Available", percentageEarnedId: "MP2PC3 Total Percentage Earned" },
             { title: "Mid-term Exam", class: "", periodId: "MidTermExam", pointsEarnedId: "Mid-Term Exam Points Earned", pointsAvailableId: "Mid-Term Exam Total Points Available", percentageEarnedId: "Mid-Term Exam Total Percentage Earned", ESWeight: "0", MSWeight: "0", HSWeight: "10" },
             { title: "Marking Period 3", class: "", periodId: "MP3Total", pointsEarnedId: "MP3 Total Points Earned", pointsAvailableId: "MP3 Total Points Available", percentageEarnedId: "MP3 Total Percentage Earned", ESWeight: "25", MSWeight: "25", HSWeight: "20" },
-            { title: "MP3 Progress Check 1", class: "indent", periodId: "MP3PC1", pointsEarnedId: "MP3PC1 Points Earned", pointsAvailableId: "MP3PC1 Total Points Available", percentageEarnedId: "MP3PC1 Total Percentage Earned" },
-            { title: "MP3 Progress Check 2", class: "indent", periodId: "MP3PC2", pointsEarnedId: "MP3PC2 Points Earned", pointsAvailableId: "MP3PC2 Total Points Available", percentageEarnedId: "MP3PC2 Total Percentage Earned" },
-            { title: "MP3 Progress Check 3", class: "indent", periodId: "MP3PC3", pointsEarnedId: "MP3PC3 Points Earned", pointsAvailableId: "MP3PC3 Total Points Available", percentageEarnedId: "MP3PC3 Total Percentage Earned" },
             { title: "Marking Period 4", class: "", periodId: "MP4Total", pointsEarnedId: "MP4 Total Points Earned", pointsAvailableId: "MP4 Total Points Available", percentageEarnedId: "MP4 Total Percentage Earned", ESWeight: "25", MSWeight: "25", HSWeight: "20" },
-            { title: "MP4 Progress Check 1", class: "indent", periodId: "MP4PC1", pointsEarnedId: "MP4PC1 Points Earned", pointsAvailableId: "MP4PC1 Total Points Available", percentageEarnedId: "MP4PC1 Total Percentage Earned" },
-            { title: "MP4 Progress Check 2", class: "indent", periodId: "MP4PC2", pointsEarnedId: "MP4PC2 Points Earned", pointsAvailableId: "MP4PC2 Total Points Available", percentageEarnedId: "MP4PC2 Total Percentage Earned" },
-            { title: "MP4 Progress Check 3", class: "indent", periodId: "MP4PC3", pointsEarnedId: "MP4PC3 Points Earned", pointsAvailableId: "MP4PC3 Total Points Available", percentageEarnedId: "MP4PC3 Total Percentage Earned" },
             { title: "Final Exam", class: "", periodId: "FinalExam", pointsEarnedId: "Final Exam Points Earned", pointsAvailableId: "Final Exam Points Available", percentageEarnedId: "Final Exam Percentage Earned", ESWeight: "0", MSWeight: "0", HSWeight: "10" },
             { title: "Course Final", class: "", periodId: "CourseFinal", pointsEarnedId: "Course Total Points Earned", pointsAvailableId: "Course Total Points Available", percentageEarnedId: "Course Total Percentage Earned", ESWeight: "100", MSWeight: "100", HSWeight: "100" }
             ];
-  
+
             // Titles that should have an include checkbox
             const includeTitles = ["Marking Period 1", "Marking Period 2", "Marking Period 3", "Marking Period 4", "Mid-term Exam", "Final Exam"];
-        
+
             // Add rows to the table body
             rows.forEach(row => {
                 const tr = document.createElement('tr');
                 tr.setAttribute('data-period-id', row.periodId); // Set data-period-id attribute
                 const tdTitle = document.createElement('td');
                 tdTitle.setAttribute('data-title-id', row.title); // Set data-title-id attribute
-            
+
                 // Check if the row should be indented
                 if (row.class === "indent") {
                 tdTitle.style.paddingLeft = '30px'; // Apply indentation to the first cell
                 }
-            
+
                 tdTitle.textContent = row.title;
                 tr.appendChild(tdTitle);
-            
+
                 // Create empty cells for Points Earned, Points Available, and Percentage
                 const tdPointsEarned = document.createElement('td');
                 tdPointsEarned.setAttribute('data-points-earned-id', row.pointsEarnedId); // Set data-points-earned-id attribute
                 tr.appendChild(tdPointsEarned);
-  
+
                 const tdPointsAvailable = document.createElement('td');
                 tdPointsAvailable.setAttribute('data-points-available-id', row.pointsAvailableId); // Set data-points-available-id attribute
                 tr.appendChild(tdPointsAvailable);
-  
+
                 const tdPercentageEarned = document.createElement('td');
                 tdPercentageEarned.setAttribute('data-percentage-earned-id', row.percentageEarnedId); // Set data-percentage-earned-id attribute
                 tr.appendChild(tdPercentageEarned);
-  
+
                 //ORG
                 /*for (let i = 0; i < 3; i++) {
                 const td = document.createElement('td');
                 tr.appendChild(td);
                 }*/
-            
+
                 // Create the Include checkbox only for specified titles
                 const tdInclude = document.createElement('td');
                 if (includeTitles.includes(row.title)) {
@@ -1867,14 +2034,14 @@
                     tdInclude.appendChild(includeCheckbox);
                 }
                 tr.appendChild(tdInclude);
-            
+
                 tbody.appendChild(tr);
             });
-        
+
             // Append the table to the document body or a specific element
             waybetterGradebookContainer.appendChild(CourseTotalsTable);
         }
-  
+
         // Function to count and display submission statuses
         function studentInsightsDataTeaser(studentFirstNamefromEnrollments) {
           // Filter assignments based on the checked status of the include checkbox
@@ -1885,7 +2052,7 @@
           });
           //console.log("includedAssignments: " + includedAssignments);
           //includedAssignments.forEach(assignment => console.dir(assignment));
-  
+
           const totalAssignments = document.querySelectorAll('[data-submission-time-status]').length;
           const totalSelectedAssignments = includedAssignments.length;
           const selectedExcusedAssignments = includedAssignments.filter(assignment => assignment.getAttribute('data-submission-time-status') === "Excused").length;
@@ -1900,11 +2067,11 @@
           const totalManualEntryAssignments = document.querySelectorAll('[data-submission-time-status="Manual Entry"]').length;
           const selectedNoStatusAssignments = includedAssignments.filter(assignment => assignment.getAttribute('data-submission-time-status') === "").length;
           const totalNoStatusAssignments = document.querySelectorAll('[data-submission-time-status=""]').length;
-  
+
           // New constant to calculate assignments that are not past due and have not been submitted
           // This is not perfect yet, but it's a start. Refactor later.
           const notPastDueAndNotSubmitted = totalAssignments - totalNoStatusAssignments;
-  
+
           // Calculate discussion participation and points
           const discussionAssignments = includedAssignments
           .map(assignment => assignment.closest('tr'))
@@ -1912,52 +2079,52 @@
               const assignmentTypeSpan = tr.querySelector('[data-assignment-types]');
               return assignmentTypeSpan && assignmentTypeSpan.getAttribute('data-assignment-types').includes('discussion_topic');
           });
-  
+
           const discussionSubmissions = includedAssignments
               .map(assignment => assignment.closest('tr'))
               .filter(tr => {
                   const submissionTypeSpan = tr.querySelector('[data-submission-type]');
                   const pointsElement = tr.querySelector('[data-original-value]');
-                  const pointsEarned = pointsElement ? 
+                  const pointsEarned = pointsElement ?
                       (pointsElement.textContent === "0" ? 0 : parseFloat(pointsElement.textContent) || 0) : 0;
-                  return submissionTypeSpan && 
-                         submissionTypeSpan.getAttribute('data-submission-type').includes('discussion_topic') && 
+                  return submissionTypeSpan &&
+                         submissionTypeSpan.getAttribute('data-submission-type').includes('discussion_topic') &&
                          pointsEarned > 0.0;
           });
-  
+
           // Another option if needed because of the "EX" case. Currently, we're fine without it, even when "EX" is present:
           /*const discussionSubmissions = includedAssignments
           .map(assignment => assignment.closest('tr'))
           .filter(tr => {
               const submissionTypeSpan = tr.querySelector('[data-submission-type]');
               const pointsElement = tr.querySelector('[data-original-value]');
-              const pointsEarned = pointsElement ? 
+              const pointsEarned = pointsElement ?
                   (pointsElement.textContent === "EX" ? 0 : // Handle excused case
-                  pointsElement.textContent === "0" ? 0 : 
+                  pointsElement.textContent === "0" ? 0 :
                   parseFloat(pointsElement.textContent) || 0) : 0;
-              return submissionTypeSpan && 
-                  submissionTypeSpan.getAttribute('data-submission-type').includes('discussion_topic') && 
+              return submissionTypeSpan &&
+                  submissionTypeSpan.getAttribute('data-submission-type').includes('discussion_topic') &&
                   pointsEarned > 0.0;
           });*/
-  
+
           const totalDiscussionAssignments = discussionAssignments.length;
           const totalDiscussionSubmissions = discussionSubmissions.length;
-  
+
           const totalDiscussionPointsPossible = discussionAssignments.reduce((sum, tr) => {
               const pointsPossibleElement = tr.querySelector('[data-points-possible]');
               const pointsPossible = parseFloat(pointsPossibleElement?.getAttribute('data-points-possible')) || 0;
               //console.log('Points possible:', pointsPossible); // Debug log
               return sum + pointsPossible;
           }, 0);
-          
+
           const totalDiscussionPointsEarned = discussionAssignments.reduce((sum, tr) => {
               const pointsElement = tr.querySelector('[data-original-value]');
-              const pointsEarned = pointsElement ? 
+              const pointsEarned = pointsElement ?
                   (pointsElement.textContent === "0" ? 0 : parseFloat(pointsElement.textContent) || 0) : 0;
               //console.log('Points earned:', pointsEarned); // Debug log
               return sum + pointsEarned;
           }, 0);
-  
+
           // Create or update the container for the summary
           let studentInsightsData = document.getElementById('studentInsightsData');
           if (!studentInsightsData) {
@@ -1977,12 +2144,12 @@
               <p>${studentFirstNamefromEnrollments} has <span style="font-style: italic; font-weight: bold;">${totalNoStatusAssignments}</span> total assignments with <span style="font-style: italic; font-weight: bold;">No Status</span> for the selected time period (most likely due to the assignment(s) not being past due and not submitted).</p>
           `;
         }
-  
+
         // Function to display submissions and calculate category totals
         async function displaySubmissionsWithCategories(submissions, assignmentGroups, source) {
-  
+
             let formattedStartDateInput, formattedEndDateInput;
-  
+
             switch (source) {
                 case 'customDates':
                     const startDateInput = document.getElementById('customStartDate').value;
@@ -1994,7 +2161,7 @@
                     formattedStartDateInput = new Date(startDateInput + "T00:00:00");
                     formattedEndDateInput = new Date(endDateInput + "T23:59:59");
                     break;
-  
+
                 case 'predefinedDates':
                     const selectedTimeFrame = document.getElementById('predefinedTimeFrames').value;
                     const timeFrame = predefinedTimeFramesObject[selectedTimeFrame];
@@ -2005,17 +2172,17 @@
                     formattedStartDateInput = timeFrame.start;
                     formattedEndDateInput = timeFrame.end;
                     break;
-  
+
                 default:
                     console.error('Invalid source provided');
                     return;
             }
-  
+
             if (!formattedStartDateInput || !formattedEndDateInput || formattedStartDateInput > formattedEndDateInput) {
                 alert('Please enter valid dates.');
                 return;
             }
-  
+
             console.log("formattedStartDateInput: " + formattedStartDateInput);
             console.log("formattedEndDateInput: " + formattedEndDateInput);
             //datesLoaded = `${formatDateMMDDYYYY(formattedStartDateInput)} to ${formatDateMMDDYYYY(formattedEndDateInput)}`;
@@ -2025,22 +2192,22 @@
             //animateDatesLoadedDisplay();
             //animateCurrentDateDisplay();
             updateTimeFramesDisplayInfo();
-  
+
           //clearSubmissionsTable();
           clearSubmissionsTableTBody();
-  
+
           // Initialize groupTotals with all groups having 0 pointsEarned and pointsAvailable
           const groupTotals = assignmentGroups.reduce((acc, group) => {
             acc[group.id] = { name: group.name, weight: group.group_weight, pointsEarned: 0, pointsAvailable: 0 };
             return acc;
           }, {});
-        
+
           // Process submissions to calculate points earned and available for each group
           submissions.forEach(submission => {
             const assignment = submission.assignment;
             //console.log("assignment object: " + assignment);
-            // Use assignment.due_at if available, otherwise use submission.cached_due_date
-            const dueDate = assignment.due_at ? new Date(assignment.due_at) : new Date(submission.cached_due_date);
+            // Use Canvas's own per-student effective due date (accounts for overrides/extensions)
+            const dueDate = getEffectiveDueDate(assignment, submission);
             dueDate.setHours(23, 59, 59, 999);
             //console.log("assignment.name: " + assignment.name + " " + "submission.cached_due_date: " + submission.cached_due_date);
             // Trying to debug missing assignments, some assignments assignment.due_at = null
@@ -2072,7 +2239,7 @@
               }
             }
           });
-        
+
           // Create and populate the first table with submissions...
           //const table = document.createElement('table');
           //table.className = "ic-Table ic-Table--hover-row ic-Table--grades-summary-table";
@@ -2080,7 +2247,7 @@
           //table.style.position = 'relative';
           //table.style.left = '100px';
           //table.innerHTML = `<tr><th>Assignment Name</th><th>Due Date</th><th>Submission Time</th><th>Submission Status</th><th>Points Earned</th><th>Points Available</th><th>SpeedGrader Link</th></tr>`;
-        
+
           // Existing code to populate the table with individual submissions...
           // Function to display submissions in a table
           //function displaySubmissions(submissions) {
@@ -2092,7 +2259,7 @@
                 const dueB = new Date(b.assignment.due_at).getTime();
                 return dueA - dueB;
             });*/
-            // working, but should key off cached_due_date first, then due_at; but also might need to 
+            // working, but should key off cached_due_date first, then due_at; but also might need to
             // change the display function to display the lower date value of cached_due_date or due_at
             /*const sortedSubmissions = submissions.sort((a, b) => {
                 const dueA = a.assignment.due_at ? new Date(a.assignment.due_at) : new Date(a.cached_due_date);
@@ -2100,33 +2267,26 @@
                 return dueA - dueB;
             });*/
             const sortedSubmissions = submissions.sort((a, b) => {
-                let dueA = a.assignment.due_at ? new Date(a.assignment.due_at) : new Date(a.cached_due_date);
-                let dueB = b.assignment.due_at ? new Date(b.assignment.due_at) : new Date(b.cached_due_date);
-            
-                // Use cached_due_date if it predates due_at
-                if (new Date(a.cached_due_date) < dueA) {
-                    dueA = new Date(a.cached_due_date);
-                }
-                if (new Date(b.cached_due_date) < dueB) {
-                    dueB = new Date(b.cached_due_date);
-                }
-            
+                // Use Canvas's own per-student effective due date (accounts for overrides/extensions)
+                const dueA = getEffectiveDueDate(a.assignment, a);
+                const dueB = getEffectiveDueDate(b.assignment, b);
+
                 // First, sort by due date
                 if (dueA - dueB !== 0) {
                     return dueA - dueB;
                 }
-            
+
                 // If due dates are the same, sort by assignment_group_id
                 if (a.assignment.assignment_group_id !== b.assignment.assignment_group_id) {
                     return a.assignment.assignment_group_id - b.assignment.assignment_group_id;
                 }
-            
+
                 // If assignment_group_id are the same, sort by assignment.position
                 // IMPORTANT: assignment.position is the position on the Assignments page, NOT the Modules page
                 if (a.assignment.position !== b.assignment.position) {
                     return a.assignment.position - b.assignment.position;
                 }
-            
+
                 // If positions are the same, sort by assignment.id
                 return a.assignment.id - b.assignment.id;
             });
@@ -2140,7 +2300,7 @@
                 const dueB = b.assignment.due_at ? new Date(b.assignment.due_at).getTime() : new Date(b.submission.cached_due_date).getTime();
                 return dueA - dueB;
             });*/
-  
+
             //Moving the table outside of this function into the setupUI function
             /*const table = document.createElement('table');
             // Add styling to the table
@@ -2165,15 +2325,9 @@
               //console.log(submission)
               if (assignment) {
                 //console.log("submission.id: " + submission.id + " assignment.id: " + assignment.id + " assignment.name: " + assignment.name + " submission.cached_due_date: " + submission.cached_due_date + " assignment.due_at: " + assignment.due_at);
-                //const dueAt = assignment.due_at ? new Date(assignment.due_at) : new Date(submission.cached_due_date);
-                
-                // Determine the earliest due date between due_at and cached_due_date
-                let dueAt = new Date(assignment.due_at || submission.cached_due_date); // Default to due_at, fallback to cached_due_date
-                const cachedDueDate = new Date(submission.cached_due_date);
-                if (cachedDueDate < dueAt) {
-                  dueAt = cachedDueDate; // Use cached_due_date if it's earlier
-                }
-  
+                // Use Canvas's own per-student effective due date (accounts for overrides/extensions)
+                const dueAt = getEffectiveDueDate(assignment, submission);
+
                 const submittedAt = submission.submitted_at ? new Date(submission.submitted_at).toLocaleString() : 'N/A';
                 const groupName = assignmentGroups.find(group => group.id === assignment.assignment_group_id)?.name || 'Unknown Group';
                 // Determine if the submission was unsubmitted
@@ -2187,7 +2341,7 @@
                 //pointsEarnedCalculation = Math.round(pointsEarnedCalculation * 100) / 100;
                 const pointsPossible = assignment.points_possible;
                 let includeCheckboxChecked = "checked"; // Default to checked
-        
+
                 // New check for excused and graded submissions
                 if (submission.excused === true && submission.workflow_state === 'graded') {
                     pointsEarnedDisplay = 'EX'; // Display "EX" for excused submissions
@@ -2210,22 +2364,22 @@
                       pointsEarnedDisplay = '-'; // Set display to '-' for unsubmitted
                     }
                 }
-  
+
                 // Determine if the submission is submitted but not graded
                 const submittedNotGraded = submission.submitted_at && submission.workflow_state === 'submitted' && submission.score === null;
                 const submittedNotGradedData = submittedNotGraded ? 'true' : 'false';
-            
+
                 //if (dueAt >= customStartTime && dueAt <= customEndTime) {
                 if (dueAt >= formattedStartDateInput && dueAt <= formattedEndDateInput) {
                   const row = document.createElement('tr');
                   // Set the SpeedGrader link
                   const speedGraderLink = `${baseUrl}/courses/${courseId}/gradebook/speed_grader?assignment_id=${submission.assignment_id}&student_id=${submission.user_id}`;
-  
-                  // Determine the marking period progress check
-                  const markingPeriodProgressCheck = getMarkingPeriodProgressCheck(dueAt);
-  
+
+                  // Determine the marking period
+                  const markingPeriodForDueDate = getMarkingPeriodForDueDate(dueAt);
+
                   const currentDate = new Date();
-  
+
                   // Determine the adjusted submission status
                   let adjustedSubmissionStatus = "";
                   if (submission.workflow_state === 'pending_review') {
@@ -2237,15 +2391,15 @@
                           adjustedSubmissionStatus = "Review Suggested";
                       }
                   }
-  
+
                   // Check if the submission is submitted but not graded
                   if (submittedNotGradedData === 'true') {
                       adjustedSubmissionStatus = "Awaiting Grading";
                   }
-  
+
                   // Determine if there is an adjusted status to show
                   const showAdjustedStatus = adjustedSubmissionStatus !== "";
-  
+
                   // Determine the lesson and submission status
                   let lessonStatus = "";
                   let submissionStatus = "";
@@ -2254,7 +2408,7 @@
                   let statusBorder = "none";
                   let statusBorderRadius = "0";
                   let statusPadding = "0";
-  
+
                   if (submission.excused) {
                       lessonStatus = "Excused";
                       submissionStatus = "Excused";
@@ -2281,19 +2435,19 @@
                       lessonStatus = "On Time";
                       submissionStatus = "On Time";
                   }
-  
+
                   // Determine if the assignment is past due
                   const isPastDue = dueAt < currentDate;
-  
+
                   // Determine the display text for workflow state
-                  const workflowStateDisplay = submission.workflow_state === 'pending_review' 
+                  const workflowStateDisplay = submission.workflow_state === 'pending_review'
                   ? 'Pending Review'
                   : capitalizeFirstLetter(submission.workflow_state);
-  
+
                   // Define the assignment type display
                   const submissionType = submission.submission_type || 'Unknown'; // Default to 'Unknown' if submission_type is not defined
                   const assignmentTypes = Array.isArray(assignment.submission_types) ? assignment.submission_types.join(' ') : 'Unknown'; // Join array elements with a space
-  
+
                   row.innerHTML = `
                     <td>
                       <span data-assignment-types="${assignmentTypes}">
@@ -2304,8 +2458,8 @@
                     </td>
                     <td><span data-is-past-due="${isPastDue ? 'true' : 'false'}">${dueAt.toLocaleString()}</span>
                       <br>
-                      <span data-mp-progress-check="${markingPeriodProgressCheck}" style="font-size: smaller; font-style: italic;">
-                        ${markingPeriodProgressCheck ? markingPeriodProgressCheck.replace(/(\d)(PC)/, '$1 PC') : 'No MPPC Found'}
+                      <span data-marking-period="${markingPeriodForDueDate}" style="font-size: smaller; font-style: italic;">
+                        ${markingPeriodForDueDate ? markingPeriodForDueDate.replace('Total', '') : 'No Marking Period Found'}
                       </span>
                     </td>
                     <td>
@@ -2344,11 +2498,11 @@
                       </a>
                     </td>
                     <td>
-                      <input type="checkbox" class="include-checkbox" ${includeCheckboxChecked} 
-                            data-assignment-id="${submission.assignment_id}" 
-                            data-points-earned="${pointsEarnedCalculation}" 
-                            data-points-possible="${pointsPossible}" 
-                            data-group-id="${assignment.assignment_group_id}" 
+                      <input type="checkbox" class="include-checkbox" ${includeCheckboxChecked}
+                            data-assignment-id="${submission.assignment_id}"
+                            data-points-earned="${pointsEarnedCalculation}"
+                            data-points-possible="${pointsPossible}"
+                            data-group-id="${assignment.assignment_group_id}"
                             data-was-unsubmitted="${wasUnsubmitted ? 'true' : 'false'}"
                             data-excused="${submission.excused === true ? 'true' : 'false'}"
                             data-pending-review="${submission.workflow_state === 'pending_review' ? 'true' : 'false'}"
@@ -2378,19 +2532,19 @@
             //moved the table into the setupUI function
             //waybetterGradebookContainer.appendChild(table);
           //} // OLD ending of OLD displaySubmissions function
-  
+
           // Reprint the "Assignments are weighted by group table" Canvas element
           // Depending on what assignment category is selected, Canvas might not show all categories (including 0% categories)
           const assignmentsGroupTableBodyElement = document.querySelector("#assignments-not-weighted > div:nth-child(1) > table.summary > tbody");
           assignmentsGroupTableBodyElement.innerHTML = '';
           Object.entries(groupTotals).forEach(([groupId, group]) => {
-            if (group.weight >= 0) { 
+            if (group.weight >= 0) {
               const row = document.createElement('tr');
               row.innerHTML = `<th scope="row">${group.name}</th><td>${group.weight}%</td>`;
               assignmentsGroupTableBodyElement.appendChild(row);
             }
           });
-  
+
           // Add rows for each category, excluding those with 0% weight
           // Iterate over groupTotals using Object.entries() to get both the key (groupId) and the value (group data)
           // This has been tricky, rounding throws this value off, whereas recalculateTotals() produces correct results
@@ -2405,10 +2559,10 @@
               table.appendChild(row);
             }
           });*/
-  
+
           // New (not working any differently than ORG, trying recalculateTotals() hack)
-          // v2.11.06 Added some new code for data-group-name, data-group-weight, data-group-earned-points, data-group-available-points, data-group-earned-percent, 
-          // but did not make it dynamic yet. It should probably be removed if not being used, and/or 
+          // v2.11.06 Added some new code for data-group-name, data-group-weight, data-group-earned-points, data-group-available-points, data-group-earned-percent,
+          // but did not make it dynamic yet. It should probably be removed if not being used, and/or
           // make sure that it's dynamic through the recalculateTotals() function.
           // v2.11.43 - Now dynamic.
           Object.entries(groupTotals).forEach(([groupId, group]) => {
@@ -2425,13 +2579,13 @@
               submissionsTableTBody.appendChild(row);
             }
           });
-          // Just hacking in this recalculateTotals() function because that seems to be the only properly working 
+          // Just hacking in this recalculateTotals() function because that seems to be the only properly working
           // calculating function and my eyes are going crossed trying to get this right. I'll try to code it properly later.
-          // Funny enough, the code below this recalculateTotals() to calculate the Total Earned Percentage does seem to work 
+          // Funny enough, the code below this recalculateTotals() to calculate the Total Earned Percentage does seem to work
           // properly when we don't include the above code. I really need to re-write that and get rid of this recalculateTotals() hack.
           recalculateTotals();
           //recalculateTotalsNormalizedTo100Percent();
-        
+
           // Calculate and add a final row for the total earned percentage, including 0% weight categories
           let totalWeightedPointsEarned = 0;
           let totalWeight = 0;
@@ -2449,7 +2603,7 @@
           finalRow.innerHTML = `<td>Total Earned Percentage <span id="totalWeightPercentageFinalRow" style="font-size: smaller;" class="group-weight-percentage">(${totalWeight}%)</span></td><td colspan="5">${finalPercentage.toFixed(2)}%</td><td><button class="Button" id="resetButton">Reset Changes</button></td><td><label><input type="checkbox" id="calculateSubmittedOnly">&nbsp;Calculate based only on submitted assignments</label></td>`;
           //submissionsTable.appendChild(finalRow);
           submissionsTableTBody.appendChild(finalRow);
-        
+
           waybetterGradebookContainer.appendChild(submissionsTable);
           // Update the gradesDisplayElement on the Canvas page
           // Check if the element exists to avoid errors
@@ -2466,12 +2620,12 @@
           totalRow.style.fontWeight = "bold";
           totalRow.innerHTML = `<th scope="row">Total</th><td id="totalWeightPercentageTotalRow">${totalWeight}%</td>`;
           assignmentsGroupTableBodyElement.appendChild(totalRow);
-          
+
           //const submissions = await fetchSubmissionsForStudent();
-  
+
           //createCourseTotalsTable(); // Ensure this is called before loading period data
           //loadPeriodDataIntoTable(submissions); // Load the data into the table
-        
+
           document.querySelectorAll('.include-checkbox').forEach(checkbox => {
             checkbox.addEventListener('change', () => {
               // If the checkbox for an "EX" submission is checked, uncheck calculateSubmittedOnly
@@ -2483,7 +2637,7 @@
                 if (checkbox.checked && checkbox.getAttribute('data-was-unsubmitted') === 'true') {
                   document.getElementById('calculateSubmittedOnly').checked = false;
                 }
-                
+
                 // Check if all unsubmitted are unchecked and no "EX" submissions are checked to decide the state of calculateSubmittedOnly
                 const allUnsubmittedUnchecked = Array.from(document.querySelectorAll('.include-checkbox[data-was-unsubmitted="true"]'))
                   .every(checkbox => !checkbox.checked);
@@ -2491,40 +2645,40 @@
                   .some(checkbox => checkbox.checked);
                 const anySubmittedChecked = Array.from(document.querySelectorAll('.include-checkbox[data-was-unsubmitted="false"]'))
                   .some(checkbox => checkbox.checked && !checkbox.getAttribute('data-excused') === 'true');
-                
+
                 // Update the condition to also consider if any "EX" submissions are checked
                 document.getElementById('calculateSubmittedOnly').checked = allUnsubmittedUnchecked && anySubmittedChecked && !anyExcusedChecked;
               }
-            
+
               // Trigger recalculation of totals
               recalculateTotals();
               //recalculateTotalsNormalizedTo100Percent();
             });
           });
-  
+
           function updateIncludeCheckboxes() {
             const autoSelectPastDueOnly = document.getElementById('autoSelectPastDueCheckbox').checked;
-  
+
             document.querySelectorAll('.include-checkbox').forEach(checkbox => {
                 const isExcused = checkbox.getAttribute('data-excused') === 'true';
                 const isPastDue = checkbox.closest('tr').querySelector('[data-is-past-due]').getAttribute('data-is-past-due') === 'true';
-  
+
                 // Check the checkbox based on the setting and conditions
                 checkbox.checked = !isExcused && (!autoSelectPastDueOnly || isPastDue);
             });
-  
+
             // Trigger recalculation of totals
             recalculateTotals();
           }
-          
+
           // Call updateIncludeCheckboxes when the setting changes
           document.getElementById('autoSelectPastDueCheckbox').addEventListener('change', () => {
             updateIncludeCheckboxes();
           });
-          
+
           // Call updateIncludeCheckboxes initially to set the checkboxes based on the default setting
           updateIncludeCheckboxes();
-        
+
           // Function to attach the click event listener to a span
           function attachClickListener(span) {
             span.addEventListener('click', function() {
@@ -2542,11 +2696,11 @@
               input.dataset.excused = this.getAttribute('data-excused');
               input.dataset.pendingReview = this.getAttribute('data-pending-review');
               input.dataset.submittedNotGraded = this.getAttribute('data-submitted-not-graded');
-  
+
               this.parentNode.replaceChild(input, this);
               input.focus();
               input.select();
-        
+
               input.addEventListener('change', () => {
                 // Update the data-points-earned and data-updated-value to the new value
                 input.setAttribute('data-points-earned', input.value);
@@ -2554,7 +2708,7 @@
                 recalculateTotals();
                 //recalculateTotalsNormalizedTo100Percent();
               });
-        
+
               input.addEventListener('blur', function() {
                 const newSpan = document.createElement('span');
                 newSpan.className = 'points-earned-clickable';
@@ -2573,16 +2727,16 @@
                 newSpan.dataset.excused = this.dataset.excused;
                 newSpan.dataset.pendingReview = this.dataset.pendingReview;
                 newSpan.dataset.submittedNotGraded = this.dataset.submittedNotGraded;
-  
+
                 this.parentNode.replaceChild(newSpan, this);
                 attachClickListener(newSpan); // Re-attach the click listener to the new span
               });
             });
           }
-        
+
           // Attach the click event listener to all initial .points-earned-clickable spans
           document.querySelectorAll('.points-earned-clickable').forEach(attachClickListener);
-        
+
           // Attach the event lister to the reset button and reset values
           document.getElementById('resetButton').addEventListener('click', () => {
             // Reset points earned to their original values or "-" for unsubmitted assignments
@@ -2591,7 +2745,7 @@
               const isExcused = element.getAttribute('data-excused') === 'true'; // Check if the submission was excused
               const isPendingReview = element.getAttribute('data-pending-review') === 'true'; // Check if the submission is pending review
               const isSubmittedNotGraded = element.getAttribute('data-submitted-not-graded') === 'true'; // Check if the submission is submitted but not graded
-  
+
               // Determine the original value based on conditions
               let originalValue;
               if (isExcused) {
@@ -2601,9 +2755,9 @@
               } else {
                   originalValue = element.getAttribute('data-original-value');
               }
-  
+
               if (element.classList.contains('points-earned-input') || isExcused || isPendingReview || isSubmittedNotGraded) {
-                  // If it's an input or an excused submission, change its value to original, "-" for unsubmitted, "EX" for excused, 
+                  // If it's an input or an excused submission, change its value to original, "-" for unsubmitted, "EX" for excused,
                   // or "-" for pending_review (if the original value was 0 for the pending_review)
                   let valueToSet = originalValue;
                   if (element.tagName.toLowerCase() === 'input') {
@@ -2620,59 +2774,59 @@
                   element.setAttribute('data-updated-value', originalValue);
               }
             });
-          
+
             // Re-check all checkboxes, then uncheck if excused
             /*document.querySelectorAll('.include-checkbox').forEach(checkbox => {
               const isExcused = checkbox.getAttribute('data-excused') === 'true'; // Check if the submission was excused
               checkbox.checked = !isExcused; // Uncheck if excused, otherwise check
             });*/
-  
+
             // Re-check all checkboxes based on the autoSelectPastDueCheckbox setting
             const autoSelectPastDueOnly = document.getElementById('autoSelectPastDueCheckbox').checked;
             const currentDate = new Date();
-  
+
             document.querySelectorAll('.include-checkbox').forEach(checkbox => {
                 const isExcused = checkbox.getAttribute('data-excused') === 'true';
                 const isPastDue = checkbox.closest('tr').querySelector('[data-is-past-due]').getAttribute('data-is-past-due') === 'true';
-  
+
                 // Check the checkbox based on the setting and conditions
                 checkbox.checked = !isExcused && (autoSelectPastDueOnly ? isPastDue : true);
             });
-  
+
             // Reset Calculate based only on submitted assignments checkbox
             // If this function blows up, delete this line.
             document.getElementById('calculateSubmittedOnly').checked = false;
-          
+
             // Trigger recalculation of totals
             recalculateTotals();
             //recalculateTotalsNormalizedTo100Percent();
           });
-        
+
           // Attach the event listener to the "Calculate based only on submitted assignments" checkbox
           document.getElementById('calculateSubmittedOnly').addEventListener('change', function() {
             const calculateSubmittedOnly = this.checked;
-            
+
             document.querySelectorAll('.include-checkbox').forEach(checkbox => {
               const wasUnsubmitted = checkbox.getAttribute('data-was-unsubmitted') === 'true';
               const isExcused = checkbox.getAttribute('data-excused') === 'true';
-          
+
               if (calculateSubmittedOnly) {
                 checkbox.checked = !(wasUnsubmitted || isExcused); // Uncheck if was unsubmitted or excused
               } else {
                 checkbox.checked = true; // Re-check all checkboxes when not calculating based only on submitted
               }
             });
-          
+
             // Trigger recalculation of totals
             recalculateTotals();
             //recalculateTotalsNormalizedTo100Percent();
           });
-  
+
           // addAdvancedSettingsUI() gradesNormalizedTo100PercentCheckbox Checkbox functionality
           document.getElementById('gradesNormalizedTo100PercentCheckbox').addEventListener('change', function() {
             recalculateTotals(); // Directly call recalculateTotals which handles the logic internally
           });
-  
+
           // This function handles updating the group totals based on checkbox state
           function updateGroupTotalsFromCheckboxes() {
             document.querySelectorAll('.include-checkbox').forEach(checkbox => {
@@ -2680,57 +2834,57 @@
                     const groupId = checkbox.getAttribute('data-group-id');
                     const assignmentId = checkbox.getAttribute('data-assignment-id');
                     const isChecked = checkbox.checked;
-  
+
                     const group = groupTotals[groupId];
-                    const element = document.querySelector(`.points-earned-input[data-assignment-id="${assignmentId}"]`) || 
+                    const element = document.querySelector(`.points-earned-input[data-assignment-id="${assignmentId}"]`) ||
                                     document.querySelector(`.points-earned-clickable[data-assignment-id="${assignmentId}"]`);
-  
+
                     if (isChecked) {
                         const pointsPossible = parseFloat(checkbox.getAttribute('data-points-possible'));
                         const updatedValue = element.getAttribute('data-updated-value');
                         const pointsEarned = updatedValue === 'EX' ? 0 : parseFloat(updatedValue) || 0;
-  
+
                         group.pointsEarned += pointsEarned;
                         group.pointsAvailable += pointsPossible;
                     } else {
                         group.pointsEarned = 0;
                         group.pointsAvailable = 0;
-  
+
                         document.querySelectorAll(`.include-checkbox[data-group-id="${groupId}"]:checked`).forEach(otherCheckbox => {
                             const otherAssignmentId = otherCheckbox.getAttribute('data-assignment-id');
-                            const otherElement = document.querySelector(`.points-earned-input[data-assignment-id="${otherAssignmentId}"]`) || 
+                            const otherElement = document.querySelector(`.points-earned-input[data-assignment-id="${otherAssignmentId}"]`) ||
                                                 document.querySelector(`.points-earned-clickable[data-assignment-id="${otherAssignmentId}"]`);
                             const otherPointsPossible = parseFloat(otherCheckbox.getAttribute('data-points-possible'));
                             const otherUpdatedValue = otherElement.getAttribute('data-updated-value');
                             const otherPointsEarned = otherUpdatedValue === 'EX' ? 0 : parseFloat(otherUpdatedValue) || 0;
-  
+
                             group.pointsEarned += otherPointsEarned;
                             group.pointsAvailable += otherPointsPossible;
                         });
                     }
-  
+
                     // Call the recalculation function after state update
                     recalculateTotals();
                 });
             });
           }
-  
+
           // One last recalculateTotals() function call to make sure that the data is correct
           recalculateTotals();
           updateGroupTotalsFromCheckboxes(); // Should this be here? DWS
-  
+
           //animateSubmissionsTableTBodyTrTd();
-  
+
           function recalculateTotals() {
             console.log("recalculateTotals() launched");
-  
+
             // Update the Student Insights tab with the Data Teaser
             studentInsightsDataTeaser(studentFirstNamefromEnrollments);
             console.log("studentInsightsDataTeaser() launched");
-  
+
             // Update the group weight display
             updateGroupWeightDisplay();
-  
+
             const gradesNormalizedTo100PercentCheckbox = document.getElementById('gradesNormalizedTo100PercentCheckbox');
             switch (gradesNormalizedTo100PercentCheckbox.checked) {
                 case true:
@@ -2748,7 +2902,7 @@
                   }
                   break;
             }
-  
+
             function recalculateTotalsDefault() {
                 console.log("recalculateTotalsDefault() launched");
                 // Reset totals for each group
@@ -2756,11 +2910,11 @@
                 group.pointsEarned = 0;
                 group.pointsAvailable = 0;
                 });
-            
+
                 document.querySelectorAll('.include-checkbox:checked').forEach(checkbox => {
                 const groupId = checkbox.getAttribute('data-group-id');
                 const assignmentId = checkbox.getAttribute('data-assignment-id');
-                const element = document.querySelector(`.points-earned-input[data-assignment-id="${assignmentId}"]`) || 
+                const element = document.querySelector(`.points-earned-input[data-assignment-id="${assignmentId}"]`) ||
                                 document.querySelector(`.points-earned-clickable[data-assignment-id="${assignmentId}"]`);
                 const pointsPossible = parseFloat(checkbox.getAttribute('data-points-possible'));
                 let pointsEarned = 0;
@@ -2780,9 +2934,9 @@
                     group.pointsAvailable += pointsPossible;
                 }
                 });
-  
+
                 console.log("Group Totals After Calculation: ", groupTotals);
-            
+
                 // Calculate and update the UI for each group
                 let totalWeightedPercentage = 0;
                 let totalWeight = 0;
@@ -2792,13 +2946,13 @@
                       const weightedPercentage = percentage * group.weight;
                       totalWeightedPercentage += weightedPercentage;
                       totalWeight += group.weight;
-              
+
                       const groupRow = document.querySelector(`tr[data-group-id="${groupId}"]`);
                       if (groupRow) {
                         groupRow.cells[1].textContent = group.pointsEarned.toFixed(2);
                         groupRow.cells[2].textContent = group.pointsAvailable.toFixed(2);
                         groupRow.cells[3].textContent = `${percentage.toFixed(2)}%`;
-  
+
                         // Update data attributes
                         groupRow.cells[1].setAttribute('data-group-earned-points', group.pointsEarned.toFixed(2));
                         groupRow.cells[2].setAttribute('data-group-available-points', group.pointsAvailable.toFixed(2));
@@ -2808,7 +2962,7 @@
                 });
                 console.log("Total weighted percentage: ", totalWeightedPercentage);
                 console.log("Total weight: ", totalWeight);
-                
+
                 // Update the total earned percentage row
                 const totalPercentage = totalWeight > 0 ? totalWeightedPercentage / totalWeight : 0;
                 const totalPercentageRow = document.querySelector('tr[data-group-id="total"]');
@@ -2825,7 +2979,7 @@
                 } else {
                   console.log("No totalPercentageRow found.");
                 }
-  
+
                 // Update the gradesDisplayElement on the Canvas page
                 //gradesDisplayElement.innerText = `${totalPercentage.toFixed(2)}%`;
                 if (gradesDisplayElement) {
@@ -2834,7 +2988,7 @@
                 } else {
                   console.log("No gradesDisplayElement found.");
                 }
-  
+
                 // Ensure the weight percentage does not exceed 100%
                 /*const totalWeightPercentageTotalRow = document.getElementById('totalWeightPercentageTotalRow');
                 console.log("totalWeightPercentageTotalRow: ", totalWeightPercentageTotalRow);
@@ -2845,10 +2999,10 @@
                   console.log("No totalWeightPercentageTotalRow found.");
                 }*/
             }
-  
+
             function recalculateTotalsNormalizedTo100Percent() {
                 console.log("recalculateTotalsNormalizedTo100Percent() launched");
-                // This function is similar to recalculateTotals, but it normalizes the weights of the groups to 100% 
+                // This function is similar to recalculateTotals, but it normalizes the weights of the groups to 100%
                 // in the case where the total weight of the groups is not 100%.
                 // This case could happen if a teacher incorrectly set weights for the groups, or if a time period
                 // has no assignments for a particular group.
@@ -2862,12 +3016,12 @@
                     group.pointsAvailable = 0;
                 });
                 console.log("Group totals reset.");
-            
+
                 // Collect data from checkboxes and update group totals
                 document.querySelectorAll('.include-checkbox:checked').forEach(checkbox => {
                     const groupId = checkbox.getAttribute('data-group-id');
                     const assignmentId = checkbox.getAttribute('data-assignment-id');
-                    const element = document.querySelector(`.points-earned-input[data-assignment-id="${assignmentId}"]`) || 
+                    const element = document.querySelector(`.points-earned-input[data-assignment-id="${assignmentId}"]`) ||
                                     document.querySelector(`.points-earned-clickable[data-assignment-id="${assignmentId}"]`);
                     const pointsPossible = parseFloat(checkbox.getAttribute('data-points-possible'));
                     let pointsEarned = 0;
@@ -2888,12 +3042,12 @@
                     }
                     console.log(`Updated group ${groupId}: Points Earned = ${group.pointsEarned}, Points Available = ${group.pointsAvailable}`);
                 });
-            
+
                 // Calculate total active weight from groups that have assignments included
                 let totalActiveWeight = Object.values(groupTotals).reduce((acc, group) => {
                     return group.pointsAvailable > 0 ? acc + group.weight : acc;
                 }, 0);
-  
+
                 // Normalize weights based on active groups
                 Object.values(groupTotals).forEach(group => {
                     if (group.pointsAvailable > 0) {
@@ -2902,7 +3056,7 @@
                         group.normalizedWeight = 0; // Set weight to 0 for groups with no active assignments
                     }
                 });
-            
+
                 // Calculate and update the UI for each group with normalized weights
                 let totalWeightedPercentage = 0;
                 Object.entries(groupTotals).forEach(([groupId, group]) => {
@@ -2911,7 +3065,7 @@
                         const weightedPercentage = percentage * (group.normalizedWeight / 100);
                         totalWeightedPercentage += weightedPercentage;
                         console.log(`Inside group.pointsAvailable > 0 if statement, Group ${groupId}, Percentage: ${percentage}, Weighted Percentage: ${weightedPercentage}, Total Weighted Percentage: ${totalWeightedPercentage}`);
-  
+
                         const groupRow = document.querySelector(`tr[data-group-id="${groupId}"]`);
                         console.log(`Group ${groupId}, Row: ${groupRow}`);
                         if (groupRow) {
@@ -2919,7 +3073,7 @@
                             groupRow.cells[2].textContent = group.pointsAvailable.toFixed(2);
                             groupRow.cells[3].textContent = `${percentage.toFixed(2)}%`;
                             console.log(`Inside groupRow if statement, Group ${groupId}, Row: ${groupRow}, Cell 1: ${groupRow.cells[1].textContent}, Cell 2: ${groupRow.cells[2].textContent}, Cell 3: ${groupRow.cells[3].textContent}`);
-  
+
                             // Update data attributes
                             groupRow.cells[1].setAttribute('data-group-earned-points', group.pointsEarned.toFixed(2));
                             groupRow.cells[2].setAttribute('data-group-available-points', group.pointsAvailable.toFixed(2));
@@ -2929,7 +3083,7 @@
                     console.log(`Group ${groupId} normalized weight: ${group.normalizedWeight}, Total Weighted Percentage: ${totalWeightedPercentage}`);
                 });
                 //console.log("recalculateTotalsNormalizedTo100Percent() totalWeight 1: ", totalWeight);
-            
+
                 // Update the total earned percentage row
                 //const totalPercentage = totalWeight > 0 ? totalWeightedPercentage / totalWeight : 0;
                 const totalPercentageRow = document.querySelector('tr[data-group-id="total"]');
@@ -2954,7 +3108,7 @@
                     console.log("No totalPercentageRow found.");
                     //console.log("recalculateTotalsNormalizedTo100Percent() totalWeight 3: ", totalWeight);
                 }
-            
+
                 // Update the gradesDisplayElement on the Canvas page
                 /*if (gradesDisplayElement) {
                   gradesDisplayElement.innerText = `${totalPercentage.toFixed(2)}%`;
@@ -2976,7 +3130,7 @@
                   console.log("No gradesDisplayElement found.");
                   //console.log("recalculateTotalsNormalizedTo100Percent() totalWeight 5: ", totalWeight);
                 }
-  
+
                 // Update the total weight percentage row
                 const totalWeightPercentageTotalRow = document.getElementById('totalWeightPercentageTotalRow');
                 console.log("totalWeightPercentageTotalRow: ", totalWeightPercentageTotalRow);
@@ -2992,7 +3146,7 @@
                 console.log("Normalized Total Percentage (totalWeightedPercentage.toFixed(2)): ", totalWeightedPercentage.toFixed(2));
                 sisWeightedScore();
             }
-  
+
             function recalculateTotalsEqualWeighting() {
               console.log("recalculateTotalsEqualWeighting() launched");
               // Reset totals for each group
@@ -3000,11 +3154,11 @@
                   group.pointsEarned = 0;
                   group.pointsAvailable = 0;
               });
-  
+
               document.querySelectorAll('.include-checkbox:checked').forEach(checkbox => {
                   const groupId = checkbox.getAttribute('data-group-id');
                   const assignmentId = checkbox.getAttribute('data-assignment-id');
-                  const element = document.querySelector(`.points-earned-input[data-assignment-id="${assignmentId}"]`) || 
+                  const element = document.querySelector(`.points-earned-input[data-assignment-id="${assignmentId}"]`) ||
                                   document.querySelector(`.points-earned-clickable[data-assignment-id="${assignmentId}"]`);
                   const pointsPossible = parseFloat(checkbox.getAttribute('data-points-possible'));
                   let pointsEarned = 0;
@@ -3024,9 +3178,9 @@
                       group.pointsAvailable += pointsPossible;
                   }
               });
-  
+
               console.log("Group Totals After Calculation: ", groupTotals);
-  
+
               // Calculate and update the UI for each group
               Object.entries(groupTotals).forEach(([groupId, group]) => {
                   if (group.weight >= 0) { // Assuming you want to display weights for groups with a weight of zero or greater (aka. all groups)
@@ -3036,7 +3190,7 @@
                           groupRow.cells[1].textContent = group.pointsEarned.toFixed(2);
                           groupRow.cells[2].textContent = group.pointsAvailable.toFixed(2);
                           groupRow.cells[3].textContent = `${percentage.toFixed(2)}%`;
-  
+
                           // Update data attributes
                           groupRow.cells[1].setAttribute('data-group-earned-points', group.pointsEarned.toFixed(2));
                           groupRow.cells[2].setAttribute('data-group-available-points', group.pointsAvailable.toFixed(2));
@@ -3044,12 +3198,12 @@
                       }
                   }
               });
-  
+
               // Calculate the total earned percentage without considering group weights
               const totalPointsEarned = Object.values(groupTotals).reduce((sum, group) => sum + group.pointsEarned, 0);
               const totalPointsAvailable = Object.values(groupTotals).reduce((sum, group) => sum + group.pointsAvailable, 0);
               const totalPercentage = totalPointsAvailable > 0 ? (totalPointsEarned / totalPointsAvailable) * 100 : 0;
-  
+
               const totalPercentageRow = document.querySelector('tr[data-group-id="total"]');
               if (totalPercentageRow) {
                   totalPercentageRow.cells[1].innerHTML = `${totalPercentage.toFixed(2)}%<br><span style="font-size: smaller;">(${totalPointsEarned.toFixed(2)}/${totalPointsAvailable.toFixed(2)})</span>`;
@@ -3057,7 +3211,7 @@
               } else {
                   console.log("No totalPercentageRow found.");
               }
-  
+
               // Update the gradesDisplayElement on the Canvas page
               if (gradesDisplayElement) {
                   gradesDisplayElement.innerText = `${totalPercentage.toFixed(2)}%`;
@@ -3066,7 +3220,7 @@
               }
             }
           }
-  
+
           function sisWeightedScore() {
             const groups = document.querySelectorAll('tr[data-group-id]');
             const normalizeCheckbox = document.getElementById('gradesNormalizedTo100PercentCheckbox');
@@ -3074,38 +3228,38 @@
             let totalWeight = 0;
             let totalPointsEarned = 0;
             let totalPointsAvailable = 0;
-        
+
             // Collect group data
             const groupData = Array.from(groups).map(group => {
                 const earnedPointsElement = group.querySelector('td[data-group-earned-points]');
                 const availablePointsElement = group.querySelector('td[data-group-available-points]');
-                
+
                 if (!earnedPointsElement || !availablePointsElement) {
                     console.log(`Missing data for group: ${group.getAttribute('data-group-name')}`);
                     return null;
                 }
-        
+
                 const earnedPoints = parseFloat(earnedPointsElement.getAttribute('data-group-earned-points'));
                 const availablePoints = parseFloat(availablePointsElement.getAttribute('data-group-available-points'));
                 const weight = parseFloat(group.getAttribute('data-group-weight'));
                 const groupName = group.getAttribute('data-group-name');
-                
+
                 console.log(`Group: ${groupName}, Earned Points: ${earnedPoints}, Available Points: ${availablePoints}, Weight: ${weight}`);
                 return { earnedPoints, availablePoints, weight, groupName };
             }).filter(group => group !== null); // Filter out any null entries
-        
+
             // Normalize weights if necessary
             if (normalizeCheckbox && normalizeCheckbox.checked) {
                 const validGroups = groupData.filter(group => group.availablePoints > 0);
                 const totalValidWeight = validGroups.reduce((sum, group) => sum + group.weight, 0);
                 console.log(`Total Valid Weight Before Normalization: ${totalValidWeight}`);
-        
+
                 validGroups.forEach(group => {
                     group.normalizedWeight = (group.weight / totalValidWeight) * 100;
                     console.log(`Normalized Weight for Group: ${group.groupName}: ${group.normalizedWeight.toFixed(2)}`);
                 });
             }
-        
+
             // Calculate weighted scores
             groupData.forEach(group => {
                 if (group.availablePoints > 0) {
@@ -3119,22 +3273,22 @@
                     console.log(`Group: ${group.groupName}, Percentage: ${percentage.toFixed(2)}, Weight: ${weight.toFixed(2)}, Weighted Score: ${weightedScore}`);
                 }
             });
-        
+
             // Check if total points earned equals total points available
             if (totalPointsEarned === totalPointsAvailable) {
                 totalWeightedScore = 100;
             }
-        
+
             console.log(`Total Points Earned: ${totalPointsEarned}`);
             console.log(`Total Points Available: ${totalPointsAvailable}`);
             console.log(`Total SIS Weighted Score: ${totalWeightedScore.toFixed(2)}`);
           }
-  
+
           function addCheckAllNoneLink() {
             // Find the "Include" header by iterating over all th elements
             const headers = document.querySelectorAll('th');
             const includeHeader = Array.from(headers).find(th => th.textContent.trim() === "Include");
-        
+
             if (includeHeader) {
                 const breakLine = document.createElement('br'); // Create a line break element
                 const checkAllNoneSpan = document.createElement('span');
@@ -3142,39 +3296,39 @@
                 checkAllNoneLink.href = '#';
                 checkAllNoneLink.textContent = 'Check All/None';
                 checkAllNoneLink.addEventListener('click', toggleCheckboxes);
-        
+
                 // Set the text content of the span and embed the link within it
                 checkAllNoneSpan.style.fontSize = 'small';
                 checkAllNoneSpan.textContent = '(';
                 checkAllNoneSpan.appendChild(checkAllNoneLink);
                 checkAllNoneSpan.appendChild(document.createTextNode(')')); // Close the parenthesis
-        
+
                 // Append the line break and then the span (which now includes the link) to the header
                 includeHeader.appendChild(breakLine);
                 includeHeader.appendChild(checkAllNoneSpan);
             }
           }
           addCheckAllNoneLink();
-  
+
           function toggleCheckboxes(event) {
             event.preventDefault(); // Prevent default link behavior
             const checkboxes = document.querySelectorAll('.include-checkbox');
             if (checkboxes.length === 0) return; // Fail gracefully if no checkboxes found
-        
+
             // Determine if we should check or uncheck based on the state of the first checkbox
             const shouldCheck = !checkboxes[0].checked;
-        
+
             checkboxes.forEach(checkbox => {
                 checkbox.checked = shouldCheck;
             });
-  
+
             // If the line below screws up the calculateSubmittedOnly function, delete it
             document.getElementById('calculateSubmittedOnly').checked = false;
-        
+
             recalculateTotals(); // Call the recalculateTotals function after updating checkboxes
           }
-  
-        
+
+
           // Function to create and append the "Course Totals" table
           // Moving this to the setupUI function
           /*function createCourseTotalsTable() {
@@ -3185,11 +3339,11 @@
             table.style.position = 'relative';
             table.style.left = '100px';
             table.className = "ic-Table ic-Table--hover-row ic-Table--grades-summary-table";
-          
+
             const caption = document.createElement('caption');
             caption.textContent = 'Course Totals';
             table.appendChild(caption);
-          
+
             const thead = document.createElement('thead');
             const headerRow = document.createElement('tr');
             const headers = ["Marking Periods", "Points Earned", "Points Available", "Percentage", "Include"];
@@ -3200,10 +3354,10 @@
             });
             thead.appendChild(headerRow);
             table.appendChild(thead);
-          
+
             const tbody = document.createElement('tbody');
             table.appendChild(tbody);
-          
+
             // Define the rows to be added
             const rows = [
               { title: "Marking Period 1", class: "", periodId: "MP1Total" },
@@ -3227,74 +3381,62 @@
               { title: "Course Final", class: "", periodId: "CourseFinal" },
               { title: "Custom Date Range", class: "", periodId: "CustomRange" } // Maybe don't need this here
             ];
-          
+
             // Add rows to the table body
             rows.forEach(row => {
                 const tr = document.createElement('tr');
                 tr.setAttribute('data-period-id', row.periodId); // Set data-period-id attribute
                 const tdTitle = document.createElement('td');
-            
+
                 // Check if the row should be indented
                 if (row.class === "indent") {
                 tdTitle.style.paddingLeft = '30px'; // Apply indentation to the first cell
                 }
-            
+
                 tdTitle.textContent = row.title;
                 tr.appendChild(tdTitle);
-            
+
                 // Create empty cells for Points Earned, Points Available, and Percentage
                 for (let i = 0; i < 3; i++) {
                 const td = document.createElement('td');
                 tr.appendChild(td);
                 }
-            
+
                 // Create the Include checkbox
                 const tdInclude = document.createElement('td');
                 const includeCheckbox = document.createElement('input');
                 includeCheckbox.type = 'checkbox';
                 tdInclude.appendChild(includeCheckbox);
                 tr.appendChild(tdInclude);
-            
+
                 tbody.appendChild(tr);
             });
-          
+
             // Append the table to the document body or a specific element
             waybetterGradebookContainer.appendChild(table);
           }*/
-  
+
           async function loadPeriodDataIntoTable(submissions) {
             // Define your time frames as in your existing code
             const timeFrames = {
               MP1Total: { start: MP1TotalStartTime, end: MP1TotalEndTime },
-              MP1PC1: { start: MP1PC1StartTime, end: MP1PC1EndTime },
-              MP1PC2: { start: MP1PC2StartTime, end: MP1PC2EndTime },
-              MP1PC3: { start: MP1PC3StartTime, end: MP1PC3EndTime },
               MP2Total: { start: MP2TotalStartTime, end: MP2TotalEndTime },
-              MP2PC1: { start: MP2PC1StartTime, end: MP2PC1EndTime },
-              MP2PC2: { start: MP2PC2StartTime, end: MP2PC2EndTime },
-              MP2PC3: { start: MP2PC3StartTime, end: MP2PC3EndTime },
               MP3Total: { start: MP3TotalStartTime, end: MP3TotalEndTime },
-              MP3PC1: { start: MP3PC1StartTime, end: MP3PC1EndTime },
-              MP3PC2: { start: MP3PC2StartTime, end: MP3PC2EndTime },
-              MP3PC3: { start: MP3PC3StartTime, end: MP3PC3EndTime },
               MP4Total: { start: MP4TotalStartTime, end: MP4TotalEndTime },
-              MP4PC1: { start: MP4PC1StartTime, end: MP4PC1EndTime },
-              MP4PC2: { start: MP4PC2StartTime, end: MP4PC2EndTime },
-              MP4PC3: { start: MP4PC3StartTime, end: MP4PC3EndTime },
               SchoolYearTotal: { start: schoolYearStartTime, end: schoolYearEndTime },
               CustomTimeTotal: { start: customStartTime, end: customEndTime }
             };
-          
+
             Object.entries(timeFrames).forEach(([periodId, {start, end}]) => {
               const totals = calculateTotalsForTimeFrame(submissions, start, end);
               updateCourseTotalsTableRow(periodId, totals);
             });
           }
-          
+
           function calculateTotalsForTimeFrame(submissions, startTime, endTime) {
             let pointsEarned = 0;
             let pointsAvailable = 0;
-  
+
             // Filter submissions based on the time frame and calculate totals
             submissions.forEach(submission => {
                 const submissionDate = new Date(submission.submitted_at);
@@ -3303,17 +3445,17 @@
                 pointsAvailable += submission.assignment.points_possible;
                 }
             });
-  
+
             // Calculate the percentage of points earned
             const percentage = pointsAvailable > 0 ? (pointsEarned / pointsAvailable) * 100 : 0;
-  
+
             return {
                 pointsEarned: pointsEarned,
                 pointsAvailable: pointsAvailable,
                 percentage: percentage
             };
           }
-          
+
           function updateCourseTotalsTableRow(periodId, data) {
             const row = document.querySelector(`#courseTotalsTable tr[data-period-id="${periodId}"]`);
             if (row) {
@@ -3322,11 +3464,11 @@
               row.cells[3].textContent = `${data.percentage.toFixed(2)}%`;
             }
           }
-  
+
           function calculateMP1Total(submissions, assignmentGroups) {
             let weightedPointsEarned = 0;
             let weightedPointsAvailable = 0;
-        
+
             submissions.forEach(submission => {
                 const assignment = submission.assignment;
                 const dueDate = new Date(assignment.due_at); // Use due date of the assignment
@@ -3341,7 +3483,7 @@
                         //console.log("submission.score: " + submission.score);
                         const pointsPossible = assignment.points_possible !== null ? assignment.points_possible : 0; // Handle null explicitly
                         //console.log("pointsPossible: " + pointsPossible);
-        
+
                         // Apply weight only if the submission is graded (not excused)
                         if (submission.workflow_state === 'graded' && !submission.excused) {
                             weightedPointsEarned += score * weight;
@@ -3355,17 +3497,17 @@
                     }
                 }
             });
-        
+
             const percentage = weightedPointsAvailable > 0 ? (weightedPointsEarned / weightedPointsAvailable) * 100 : 0;
             //console.log("Final Percentage: " + percentage);
-        
+
             return {
                 pointsEarned: weightedPointsEarned,
                 pointsAvailable: weightedPointsAvailable,
                 percentage: percentage
             };
           }
-  
+
           function updateMP1TotalRow(data) {
             const row = document.querySelector('#courseTotalsTable tr[data-period-id="MP1Total"]');
             if (row) {
@@ -3374,7 +3516,7 @@
                 row.cells[3].textContent = `${data.percentage.toFixed(2)}%`;
             }
           }
-  
+
           async function loadMP1TotalData() {
             try {
                 //const submissions = await fetchSubmissionsForStudent();
@@ -3385,10 +3527,10 @@
                 console.error('Failed to load MP1Total data:', error);
             }
           }
-        
+
           //loadMP1TotalData();
         } // End of displaySubmissionsWithCategories()
-        
+
         // Main function to fetch data and display it
         // ORG
         /*async function main() {
@@ -3404,7 +3546,7 @@
             console.error('Failed to fetch or display submissions:', error);
           }
         }*/
-  
+
         function fadeOutElement(element) {
             let op = 1;  // initial opacity
             const timer = setInterval(() => {
@@ -3417,12 +3559,12 @@
                 op -= op * 0.1;
             }, 50);
         }
-  
+
         function fadeOutElementLinear(element) {
             let op = 1;  // initial opacity
             const decrement = 0.05; // Faster decrement rate
             const intervalTime = 20; // Shorter interval time
-        
+
             const timer = setInterval(() => {
                 if (op <= 0.1) {
                     clearInterval(timer);
@@ -3433,7 +3575,7 @@
                 op -= decrement; // Subtract a fixed amount for a more linear fade
             }, intervalTime);
         }
-  
+
         function addTransitionStyles() {
             const style = document.createElement('style');
             document.head.appendChild(style);
@@ -3444,22 +3586,22 @@
                 }
             `;
         }
-  
+
         function fadeOutAndInElement(element, newContent) {
             element.style.opacity = '0'; // Start by fading out
             element.style.transition = 'opacity 0.5s ease-in-out';
-        
+
             // Wait for the fade out to finish
             setTimeout(() => {
                 element.innerHTML = newContent; // Change the content when it's invisible
                 fadeInElement(element); // Start fading in
             }, 500); // This timeout should match the transition time
         }
-        
+
         function fadeInElement(element) {
             element.style.opacity = '1'; // Fade in by setting opacity back to 1
         }
-  
+
         function createAndManageLoader() {
             const loader = document.createElement('div');
             loader.id = 'loader';
@@ -3482,9 +3624,9 @@
                     </path>
                 </svg>
             `;
-        
+
             document.body.appendChild(loader);
-        
+
             return {
                 show: function() {
                     loader.style.display = 'block';
@@ -3494,13 +3636,13 @@
                 }
             };
         }
-  
+
         async function main() {
-  
+
             const loader = createAndManageLoader();
             loader.show(); // Show the loader before starting the fetch operations
             addTransitionStyles();
-  
+
             // Create a div for status messages under the loader
             const statusMessage = document.createElement('div');
             statusMessage.style.position = 'fixed';
@@ -3511,7 +3653,7 @@
             statusMessage.style.opacity = '0';
             statusMessage.style.transition = 'opacity 0.5s ease-in-out'; // Transition for fading
             document.body.appendChild(statusMessage);
-  
+
             // Function to update status message with transition effects
             function updateStatusMessage(message) {
                 // Fade out current message
@@ -3522,14 +3664,14 @@
                     statusMessage.style.opacity = '1';
                 }, 500); // Wait for the fade out to finish
             }
-  
+
             // Schedule status messages
             const messageTimeouts = [
                 setTimeout(() => updateStatusMessage("Working to gather all of the assignments...Please wait a few more moments."), 6000),
                 setTimeout(() => updateStatusMessage("Almost there! Thank you for your patience!"), 12000),
                 setTimeout(() => updateStatusMessage("A timeout may have occurred. Either continue waiting, or refresh the page and try again."), 30000)
             ];
-  
+
             try {
               const assignmentsElement = document.getElementById('assignments');
               const GradeSummarySelectMenuGroupElement = document.getElementById('GradeSummarySelectMenuGroup');
@@ -3545,48 +3687,48 @@
                   fadeOutElementLinear(studentGradesShowAllElement);
                   //fadeOutElementLinear(only_consider_graded_assignments_wrapperElement);
               }
-  
+
               const teacherWhatIfElement = document.getElementById('teacher-what-if');
               if (teacherWhatIfElement) {
                 teacherWhatIfElement.style.opacity = '1';
                 fadeOutElementLinear(teacherWhatIfElement);
               }
-  
+
               const outcomesElement = document.getElementById('outcomes');
               if (outcomesElement) {
                 outcomesElement.style.opacity = '1';
                 fadeOutElementLinear(outcomesElement);
               }
-  
+
               const navpillsElement = document.getElementById('navpills');
               if (navpillsElement) {
                 navpillsElement.style.opacity = '1';
                 fadeOutElementLinear(navpillsElement);
               }
-  
+
               const [submissions, assignmentGroups, enrollments] = await Promise.all([
                   fetchSubmissionsForStudent(),
                   fetchAssignmentGroups(),
                   fetchEnrollments()
                   //fetchAssignmentsViaAnalytics()
               ]);
-  
+
               // Clear all timeouts if data is fetched before all messages are shown
               messageTimeouts.forEach(clearTimeout);
-  
+
               loader.hide(); // Hide the loader after fetching data
               statusMessage.style.display = 'none'; // Hide status message
-  
+
               // When the promises are resolved, start fading out the element
               /*if (assignmentsElement && GradeSummarySelectMenuGroupElement) {
                   fadeOutElementLinear(assignmentsElement);
                   fadeOutElementLinear(GradeSummarySelectMenuGroupElement);
                   //fadeOutElementLinear(only_consider_graded_assignments_wrapperElement);
               }*/
-  
+
               setupUI(submissions, assignmentGroups, enrollments);
               //displaySubmissionsWithCategories(submissions, assignmentGroups);
-  
+
               // Use requestAnimationFrame to ensure the browser has applied the initial styles
               // This is to ensure that the waybetterGradebookContainer is invisible before the transition starts
               // I don't think this is needed, right now, but it's here if we need it at a later time.
@@ -3597,7 +3739,7 @@
                       setTimeout(() => waybetterGradebookContainer.style.opacity = 1, 50); // Slight delay to ensure transition
                   }
               });*/
-  
+
             } catch (error) {
                 console.error('Failed to fetch or display submissions:', error);
                 updateStatusMessage("An error occurred. Please check the console for more details.");
@@ -3608,19 +3750,19 @@
                 }
             }
         }
-        
+
         main();
       }
-        
+
       // Create the button element
       //const waybetterGradebookButton = document.createElement('button');
       //waybetterGradebookButton.textContent = 'Enable The Waybetter Gradebook';
       //waybetterGradebookButton.className = 'Button';
       //waybetterGradebookButton.style = 'position: fixed; top: 20px; right: 20px; z-index: 1000;'; // Change if we don't want fixed styling
-  
+
       // Append the button to the body or another element in the document
       //document.body.appendChild(waybetterGradebookButton);
-  
+
       // Attach the event listener to the button
       //waybetterGradebookButton.addEventListener('click', function handleClick() {
       //    initializeWaybetterGradebook();
@@ -3629,7 +3771,7 @@
       //    // Remove the event listener
       //    waybetterGradebookButton.removeEventListener('click', handleClick);
       //});
-  
+
       function EmbedTheWayBetterGradebookButton() {
         // Create the button element
         const waybetterGradebookButton = document.createElement('button');
@@ -3638,10 +3780,10 @@
         waybetterGradebookButton.id = 'enableWaybetterGradebookButton';
         waybetterGradebookButton.style = 'position: fixed; top: 20px; right: 20px; z-index: 1000;'; // Change if we don't want fixed styling
         waybetterGradebookButton.style = 'opacity: 0; transition: opacity 0.2s ease-in-out, background-color 0.2s ease-in-out;';
-  
+
         // Try to find the #print-grades-button-container element
         const printGradesButtonContainer = document.getElementById('print-grades-button-container');
-  
+
         if (printGradesButtonContainer) {
             // If found, prepend the button to this container
             printGradesButtonContainer.insertBefore(waybetterGradebookButton, printGradesButtonContainer.firstChild);
@@ -3652,7 +3794,7 @@
             // If not found, append the button to the body as originally coded
             document.body.appendChild(waybetterGradebookButton);
         }
-  
+
         // Attach the event listener to the button
         function handleWaybetterGradebookButtonClick() {
           initializeWaybetterGradebook();
@@ -3663,18 +3805,18 @@
           // Remove the event listener
           waybetterGradebookButton.removeEventListener('click', handleWaybetterGradebookButtonClick);
         }
-  
+
         waybetterGradebookButton.addEventListener('click', handleWaybetterGradebookButtonClick);
-  
+
         // Fade in the button
         setTimeout(() => {
             waybetterGradebookButton.style.opacity = 1;
         }, 100); // Delay to ensure CSS is applied
-  
+
         // Check if the URL contains the query parameter "thewaybettergradebook=true"
         const urlParams = new URLSearchParams(window.location.search);
         const isWaybetterEnabled = urlParams.get('thewaybettergradebook') === 'true';
-  
+
         if (isWaybetterEnabled) {
           const checkOpacityInterval = setInterval(() => {
               if (parseFloat(window.getComputedStyle(waybetterGradebookButton).opacity) === 1) {
@@ -3686,16 +3828,16 @@
               }
           }, 50); // Check every 50ms
         }
-  
+
       }
       // Execute EmbedTheWayBetterGradebookButton right away
       //EmbedTheWayBetterGradebookButton();
-  
+
       // Execute EmbedTheWayBetterGradebookButton when the document is ready
       /*document.addEventListener('DOMContentLoaded', function() {
         EmbedTheWayBetterGradebookButton();
       });*/
-  
+
       // Check if the document is already loaded
       if (document.readyState === 'loading') {
         // Document is still loading, wait for it to be ready
@@ -3704,20 +3846,20 @@
         // Document is already ready, execute the function immediately
         EmbedTheWayBetterGradebookButton();
       }
-  
-  
-  
-  
-      
-  
-  
-  
+
+
+
+
+
+
+
+
     }; //END var theWayBetterGradebookUI = function()
-  
-  
-  
-  
-  
+
+
+
+
+
     if (typeof theWayBetterGradebookUI !== 'function') {
       const script = document.createElement('script');
       script.src = 'https://github.com/dslusser/PalcsUI-Canvancement/raw/master/install/the-waybetter-gradebook-standalone-beta.user.js';
@@ -3729,7 +3871,7 @@
     else {
       theWayBetterGradebookUI();
     }
-  
+
     //theWayBetterGradebookUI();
-  
+
   })();

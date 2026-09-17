@@ -171,6 +171,46 @@ A separate space for release notes, both structured and unstructured.
   - Updated marking period and progress check date ranges for the 25-26 school year.
   - Minor updates to the message Student Insights page.
 
+- v2.12.0:
+  - Updated all time frames for the 2026-2027 school year (school year, MP1-MP4) per Attachment D of the 2026-27 PALCS Academic Calendar:
+    - School Year: 2026-08-25 to 2027-06-10
+    - MP1: 2026-08-25 to 2026-11-01
+    - MP2: 2026-11-02 to 2027-01-24
+    - MP3: 2027-01-25 to 2027-04-11
+    - MP4: 2027-04-12 to 2027-06-10
+  - Removed Progress Checks (PC1/PC2/PC3) entirely, since PALCS no longer uses them:
+    - Removed MP#PC# time frame constants
+    - Removed getCurrentProgressCheck(); replaced getMarkingPeriodProgressCheck() with getMarkingPeriodForDueDate() (marking-period-only lookup)
+    - Removed "Current Progress Check" from the time frame display info
+    - Removed PC options from the predefined time frame dropdown
+    - Removed PC rows from the Course Totals table definition
+    - Submissions table badge now shows the Marking Period instead of the Progress Check
+
+- v2.13.0:
+  - Fixed due dates not matching what Canvas shows the student when an assignment has an individual/section/group override (most commonly an extension that moves the due date LATER than the assignment's base/default due date)
+    - Root cause: due dates were previously resolved by taking the EARLIEST of assignment.due_at (base date) and submission.cached_due_date. That's only correct when an override moves the date earlier; it silently picks the wrong (earlier) date whenever an override moves it later.
+    - Added getEffectiveDueDate(assignment, submission), which reads Canvas's own already-override-resolved due date from ENV.effective_due_dates[assignmentId][studentId].due_at -- the literal value Canvas shows the student, so there's no more guessing between due_at and cached_due_date
+    - Falls back to the old earliest-of logic only if Canvas didn't provide an effective_due_dates entry for that assignment/student (should be rare)
+  - Replaced all three ad hoc due-date computations (group/weight totals filter, submissions table sort comparator, and the submissions table row due date / marking-period badge / late-status logic) with this single shared function, so every part of the tool now agrees on the same due date for a given assignment
+
+- v2.14.0:
+  - Added a "Use Canvas Grading Period Dates" checkbox to The Waybetter Gradebook Advanced Settings, so marking period boundaries no longer have to come solely from hardcoded dates verified against a calendar PDF every year
+    - Checked (default): MP1-MP4 boundaries are pulled live from ENV.grading_period_set.grading_periods
+    - Unchecked: falls back to the hardcoded MP#TotalStartTime/EndTime constants
+    - Intended mainly for troubleshooting -- e.g. if an assignment isn't showing up where expected, toggle this to compare against the hardcoded dates
+  - If Canvas's grading_period_set is missing or doesn't contain exactly four cleanly-titled MP1-MP4 periods, silently and safely falls back to the hardcoded dates even with the box checked (never breaks the gradebook)
+  - predefinedTimeFramesObject / predefinedMarkingPeriodTimeFramesObject are now populated by refreshMarkingPeriodSource(), which re-runs whenever the checkbox changes -- everything downstream (dropdown, sort, badges, row filtering) reads from the same object, so it automatically stays in sync with the toggle
+  - #timeFrameDisplay now shows "Marking Period Source" (Canvas vs. hard-coded, including when a checked box silently fell back) and the resolved MP1-MP4 date ranges, so what's displayed always matches whichever source is active
+  - Session-only, matching the other Advanced Settings checkboxes: always resets to checked (Canvas dates) on page load, nothing is persisted
+
+- v2.15.0:
+  - Renamed the student-switcher "Apply" button to "Load Student Data" -- it was never just applying a UI filter, it was always doing a full page navigation/reload, and the new name says so
+  - Added a refresh icon button next to it, as a shortcut for "reload this student's data" without needing to touch the dropdown first. Both buttons now call a single shared loadStudentData(url) function (full page reload via window.location.href) -- the button uses whichever student is selected in the dropdown, the icon uses the current page as-is
+  - This has to be a real page reload (not an in-place API re-fetch) because ENV (effective_due_dates, grading_period_set, etc.) is baked into the page by Canvas at initial render and doesn't update via any of this script's API calls -- an in-place refresh would leave those stale while everything else looked current
+
+- v2.15.1:
+  - Swapped the refresh button's icon from a plain Unicode arrow to Canvas's own icon-refresh icon font class, and gave it the exact same classes/margin as the Load Student Data button (Button, Button--primary) so the two sit together as a matched pair rather than looking like two different button styles
+
 - #### TODO:
 - Consider using the Canvas Inbox API/xhr request to send a message to the student directly from the page
 - Ease in and out:
@@ -192,6 +232,7 @@ A separate space for release notes, both structured and unstructured.
   - Big version bump for these issues. This course totals table is a bear.
     - Course totals table not calculating assignment group weights
     - Course totals table not adding mid-term, final, course final, and custom date range
+- Add additional functionality to the Student Insights tab (currently still mostly a placeholder/sneak peek)
 
 - #### CURRENT ISSUES: 
     - Consider updating the recalculateTotalsNormalizedTo100Percent() and recalculateTotalsDefault() 
@@ -246,6 +287,9 @@ A separate space for release notes, both structured and unstructured.
 
   - GOALS for v2.11.52:
     - Make the sticky submissions table header prettier
+
+  - GOALS for v2.16.0:
+    - Add additional functionality to the Student Insights tab
 
 ### [palcs-ui-standalone-beta.user.js](https://github.com/dslusser/PalcsUI-Canvancement/raw/master/install/palcs-ui-standalone-beta.user.js)
 - v5.3.1
