@@ -7,7 +7,7 @@
 // @match         https://*.instructure.com/courses/*/quizzes/*/history?*
 // @match         https://*.instructure.com/*
 // @noframes
-// @version       5.4.18
+// @version       5.5.1
 // @grant         none
 // @updateURL     https://github.com/dslusser/PalcsUI-Canvancement/raw/master/install/palcs-ui-standalone.user.js
 // @downloadURL   https://github.com/dslusser/PalcsUI-Canvancement/raw/master/install/palcs-ui-standalone.user.js
@@ -32,6 +32,7 @@
     'addGradePercentage' : true,
     'addSgStudentNameGreeting' : true,
     'awardFullPointsAndNext' : true,
+    'addRubricAwardFullPoints' : true,
     'adjustBrowserThemeColor' : true,
     'addSpecialGlobalNavLinks' : true,
     'addWhatIfScoresButton' : true,
@@ -57,6 +58,7 @@
   // addSgStudentNameGreeting adds student and lesson name copy icons to the SpeedGrader
   // addSgStudentNameGreeting also adds [[StudentName]] and [[LessonName]] short codes to the SpeedGrader
   // awardFullPointsAndNext adds a button to SpeedGrader to award full points, submit comments, and move to the next student
+  // addRubricAwardFullPoints adds an Award Full Points button beside the rubric Instructor Score that selects the top rating for every criterion
   // adjustBrowserThemeColor updates Safari 15+ (and Chrome Android App) theming
   // addSpecialGlobalNavLinks adds announcements, modules, users, and grades links to each Courses global nav item
   // addWhatIfScoresButton adds a What If Scores button to the Student Grades Page
@@ -170,6 +172,7 @@
         'addGradePercentage' : true,
         'addSgStudentNameGreeting' : true,
         'awardFullPointsAndNext' : true,
+        'addRubricAwardFullPoints' : true,
         'adjustBrowserThemeColor' : true,
         'addSpecialGlobalNavLinks' : true,
         'addWhatIfScoresButton' : true,
@@ -436,6 +439,7 @@
         addGradePercentage();
         addSgStudentNameGreeting();
         addAwardFullPointsAndNext();
+        addRubricAwardFullPoints();
         addSpeedGraderStyling();
     }
 
@@ -613,6 +617,30 @@
       var isEmpty = !editor || editor.getContent({ format: 'text' }).trim().length === 0;
 
       if (isEmpty) {
+        // Nothing to submit as a comment. Previously this branch jumped
+        // straight to nextUser(), skipping the rubricAdvance() call that the
+        // with-comment path makes - so any rubric scores that were entered
+        // were never saved and got discarded on navigation. If a rubric is
+        // showing, save it first, then advance.
+        if (sgRubricSaveButton()) {
+          // Wait for the save to land (graded count updates) before
+          // advancing. updateObserver() may also advance on that same
+          // mutation; nextUser() clears advanceUser on its first call, so
+          // whichever fires second is a no-op. The timeout keeps this from
+          // stalling if the count doesn't change (e.g. re-grading a student
+          // who was already graded).
+          var waitForSave = sgWaitForMutation(
+            sgGradedCountEl(),
+            { childList: true, characterData: true, subtree: true },
+            function() { return true; },
+            4000
+          );
+          rubricAdvance();
+          waitForSave.then(function() {
+            nextUser();
+          });
+          return;
+        }
         advanceUser = true;
         advanceSrc = false;
         nextUser();
@@ -3147,6 +3175,173 @@ function stopCanvasFromRenamingLTI() {
       .catch((error) => {
         console.error("Error processing events:", error);
       });
+  }
+
+  function addRubricAwardFullPoints() {
+    if (!(isSG && typeof config.addRubricAwardFullPoints !== 'undefined' && config.addRubricAwardFullPoints)) {
+      return;
+    }
+    // The whole rubric panel (including the Instructor Score badge) is
+    // destroyed and rebuilt by React every time View Rubric / Hide Rubric
+    // is clicked and on every student navigation. Keying the install off
+    // the Instructor Score element means a fresh button is added each time
+    // a fresh badge appears - the marker attribute lives on the old node,
+    // so it disappears along with it.
+    sgObserveAndInstall('[data-testid="rubric-assessment-instructor-score"]', 'data-palcsui-rubric-fullpoints-installed', function(scoreEl) {
+      // Badge structure: flex row > [flexItem > label box] + [flexItem > .instructor-score-badge > score span]
+      var badge = scoreEl.closest('.instructor-score-badge') || scoreEl.parentNode;
+      var badgeItem = badge ? badge.parentNode : null;
+      var row = badgeItem ? badgeItem.parentNode : null;
+      if (!row) {
+        return;
+      }
+      // Idempotency guard: if React re-rendered only the score span (and not
+      // the row around it), the existing button is still there - don't add
+      // a second one.
+      if (row.querySelector('.' + namespace + '_rubric_fullpoints')) {
+        return;
+      }
+
+      var wrapper = D.createElement('div');
+      wrapper.style.cssText = 'display:flex;align-items:center;margin-left:0.5rem;';
+
+      var btn = D.createElement('button');
+      btn.type = 'button';
+      btn.classList.add(namespace + '_rubric_fullpoints');
+      btn.textContent = 'Award Full Points';
+      btn.title = 'Select the highest rating for every rubric criterion';
+      btn.setAttribute('aria-label', btn.title);
+      // Height matches the 3rem Instructor Score badge it sits beside.
+      btn.style.cssText =
+        'display:inline-flex;align-items:center;justify-content:center;' +
+        'box-sizing:border-box;height:3rem;padding:0 1rem;' +
+        'border:none;border-radius:0.35rem;white-space:nowrap;' +
+        'background-color:var(--ic-brand-button--primary-bgd, #4a90e2);' +
+        'color:var(--ic-brand-button--primary-text, #ffffff);' +
+        'font-size:1rem;line-height:1;font-weight:bold;cursor:pointer;';
+      btn.addEventListener('mouseenter', function() {
+        btn.style.backgroundColor = '#3a7bc8';
+      });
+      btn.addEventListener('mouseleave', function() {
+        btn.style.backgroundColor = 'var(--ic-brand-button--primary-bgd, #4a90e2)';
+      });
+      btn.addEventListener('click', function(e) {
+        e.preventDefault();
+        if (btn.disabled) {
+          return;
+        }
+        btn.disabled = true;
+        btn.style.opacity = '0.6';
+        btn.textContent = 'Awarding\u2026';
+        rubricAwardFullPoints().catch(function(error) {
+          console.error('PalcsUI: rubric Award Full Points failed:', error);
+        }).then(function() {
+          // The button may already be gone if React remounted the panel
+          // mid-run; resetting a detached node is harmless.
+          btn.disabled = false;
+          btn.style.opacity = '';
+          btn.textContent = 'Award Full Points';
+        });
+      });
+
+      wrapper.appendChild(btn);
+      row.insertBefore(wrapper, badgeItem.nextSibling);
+    });
+  }
+
+  // Selects the highest-point rating for every criterion in whatever rubric
+  // is currently displayed. Nothing is hardcoded to a particular rubric -
+  // criteria and their ratings are discovered from the data-testid values
+  // Canvas renders (traditional-criterion-{id}-ratings-{n} and
+  // criterion-score-{id}).
+  async function rubricAwardFullPoints() {
+    var container = sgRubricContainer();
+    if (!container) {
+      return;
+    }
+
+    function pause(ms) {
+      return new Promise(function(resolve) { setTimeout(resolve, ms); });
+    }
+    function parsePoints(text) {
+      var m = (text || '').match(/-?\d+(?:\.\d+)?/);
+      return m ? parseFloat(m[0]) : NaN;
+    }
+    function scoreInputFor(criterionId) {
+      return container.querySelector('input[data-testid="criterion-score-' + criterionId + '"]');
+    }
+    function alreadyAt(criterionId, points) {
+      var input = scoreInputFor(criterionId);
+      return !!(input && input.value !== '' && parseFloat(input.value) === points);
+    }
+
+    // 1) Criteria with rating buttons: find the highest-point rating for each.
+    var best = {}; // criterionId -> { points, testId }
+    var order = [];
+    container.querySelectorAll('button[data-testid^="traditional-criterion-"]').forEach(function(ratingBtn) {
+      var testId = ratingBtn.getAttribute('data-testid') || '';
+      var m = testId.match(/^traditional-criterion-(.+)-ratings-(\d+)$/);
+      if (!m) {
+        return;
+      }
+      var pointsEl = ratingBtn.querySelector('[data-testid="' + testId + '-points"]');
+      var points = parsePoints(pointsEl ? pointsEl.textContent : '');
+      if (isNaN(points)) {
+        return;
+      }
+      if (!best[m[1]]) {
+        order.push(m[1]);
+      }
+      if (!best[m[1]] || points > best[m[1]].points) {
+        best[m[1]] = { 'points' : points, 'testId' : testId };
+      }
+    });
+
+    // Clicks are spaced out rather than fired in one synchronous loop.
+    // React re-renders the rubric after each selection; firing every click
+    // before it has re-rendered risks each handler working from stale
+    // state, so only the last criterion's selection would stick. Buttons
+    // are re-queried by data-testid each time in case the node was
+    // replaced by that re-render. Criteria already at full points are
+    // skipped, because clicking an already-selected rating can deselect it.
+    for (var i = 0; i < order.length; i++) {
+      var id = order[i];
+      if (alreadyAt(id, best[id].points)) {
+        continue;
+      }
+      var target = container.querySelector('button[data-testid="' + best[id].testId + '"]');
+      if (target) {
+        target.click();
+        await pause(60);
+      }
+    }
+
+    // 2) Criteria with only a free-form score input (no rating buttons).
+    var inputs = container.querySelectorAll('input[data-testid^="criterion-score-"]');
+    for (var j = 0; j < inputs.length; j++) {
+      var input = inputs[j];
+      var criterionId = (input.getAttribute('data-testid') || '').replace('criterion-score-', '');
+      if (best[criterionId]) {
+        continue;
+      }
+      // Max points come from the "/6 pts" text beside the input in the
+      // Points cell.
+      var cell = input.closest('td') || input.parentNode;
+      var maxMatch = (cell ? cell.textContent : '').match(/\/\s*(\d+(?:\.\d+)?)\s*pts?/);
+      if (!maxMatch) {
+        continue;
+      }
+      var maxPoints = parseFloat(maxMatch[1]);
+      if (alreadyAt(criterionId, maxPoints)) {
+        continue;
+      }
+      // Real focus/blur so React/InstUI actually commits the value.
+      input.focus();
+      sgSetReactInputValue(input, String(maxPoints));
+      input.dispatchEvent(new Event('change', { 'bubbles' : true }));
+      input.blur();
+      await pause(60);
+    }
   }
 
 

@@ -28,6 +28,19 @@ A separate space for release notes, both structured and unstructured.
 - v5.4.18
   - Minor update to fix a specific instance when the grade percentage wouldn't adjust when updating quiz scores on a manually graded question.
 
+- v5.5.0
+  - Added an "Award Full Points" button to the SpeedGrader rubric panel, next to the Instructor Score badge
+    - Clicking it selects the highest-point rating for every criterion in the rubric currently displayed
+    - Works with any rubric structure -- criteria and ratings are discovered from Canvas's own data-testid attributes rather than hardcoded to one rubric
+    - Handles criteria with discrete rating buttons and criteria with only a free-form score input (max points read from the "/N pts" label)
+    - Does not submit the assessment -- selections are made so you can still review before clicking Submit Assessment
+    - New config option: addRubricAwardFullPoints (default true)
+
+- v5.5.1
+  - Fixed a bug in the "Save grades, submit comments, and advance to next user" button: if the comment box was empty when clicked, the rubric assessment was never saved before advancing to the next student
+    - The empty-comment path now saves the rubric first (when one is present) and waits for confirmation before advancing, matching the behavior of the with-comment path
+    - If there's no rubric on the assignment, behavior is unchanged
+
 ### [palcschool-rc-entry.user.js](https://github.com/dslusser/PalcsUI-Canvancement/raw/master/install/palcschool-rc-entry.user.js)
 - v3.1.0
   - Creating this script as an update to [palcschool-rce.user.js](https://github.com/dslusser/PalcsUI-Canvancement/raw/master/install/palcschool-rce.user.js) which will be deprecated in the future.
