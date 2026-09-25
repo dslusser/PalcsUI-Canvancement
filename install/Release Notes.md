@@ -41,6 +41,12 @@ A separate space for release notes, both structured and unstructured.
     - The empty-comment path now saves the rubric first (when one is present) and waits for confirmation before advancing, matching the behavior of the with-comment path
     - If there's no rubric on the assignment, behavior is unchanged
 
+- v5.5.2
+  - Fixed the "Award Full Points" rubric button running off the edge of the SpeedGrader grading panel when the panel is narrow
+    - The button previously lived in a Canvas flex row marked no-wrap next to a fixed-width label box, so it had nowhere to go in a narrow panel
+    - Moved the button into Canvas's own wrapping flex container one level up, so it sits beside the Instructor Score badge when there's room and drops to its own line when there isn't
+    - As a last resort on very narrow panels, the button's text now wraps and the button grows taller, instead of being cut off
+
 ### [palcschool-rc-entry.user.js](https://github.com/dslusser/PalcsUI-Canvancement/raw/master/install/palcschool-rc-entry.user.js)
 - v3.1.0
   - Creating this script as an update to [palcschool-rce.user.js](https://github.com/dslusser/PalcsUI-Canvancement/raw/master/install/palcschool-rce.user.js) which will be deprecated in the future.

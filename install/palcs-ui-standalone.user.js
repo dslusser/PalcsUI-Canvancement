@@ -7,7 +7,7 @@
 // @match         https://*.instructure.com/courses/*/quizzes/*/history?*
 // @match         https://*.instructure.com/*
 // @noframes
-// @version       5.5.1
+// @version       5.5.2
 // @grant         none
 // @updateURL     https://github.com/dslusser/PalcsUI-Canvancement/raw/master/install/palcs-ui-standalone.user.js
 // @downloadURL   https://github.com/dslusser/PalcsUI-Canvancement/raw/master/install/palcs-ui-standalone.user.js
@@ -3188,22 +3188,49 @@ function stopCanvasFromRenamingLTI() {
     // a fresh badge appears - the marker attribute lives on the old node,
     // so it disappears along with it.
     sgObserveAndInstall('[data-testid="rubric-assessment-instructor-score"]', 'data-palcsui-rubric-fullpoints-installed', function(scoreEl) {
-      // Badge structure: flex row > [flexItem > label box] + [flexItem > .instructor-score-badge > score span]
+      // Badge structure:
+      //   wrapContainer (Canvas flex, wrap="wrap")
+      //     > rowItem (flexItem)
+      //       > row (Canvas flex, wrap="no-wrap")
+      //         > [flexItem > label box] + [flexItem > .instructor-score-badge > score span]
+      // The button used to be appended inside `row`, but that row is
+      // no-wrap and the label box has a fixed width, so in a narrow grading
+      // panel the button just ran off the edge. Inserting it as a sibling of
+      // rowItem inside wrapContainer instead lets it sit beside the badge
+      // when there's room and drop below it when there isn't.
       var badge = scoreEl.closest('.instructor-score-badge') || scoreEl.parentNode;
       var badgeItem = badge ? badge.parentNode : null;
       var row = badgeItem ? badgeItem.parentNode : null;
       if (!row) {
         return;
       }
+      var rowItem = row.parentNode;
+      var wrapContainer = rowItem ? rowItem.parentNode : null;
+      var useWrapContainer = !!(wrapContainer && wrapContainer.getAttribute('wrap') === 'wrap');
+      var host = useWrapContainer ? wrapContainer : row;
+
       // Idempotency guard: if React re-rendered only the score span (and not
-      // the row around it), the existing button is still there - don't add
-      // a second one.
-      if (row.querySelector('.' + namespace + '_rubric_fullpoints')) {
+      // the elements around it), the existing button is still there - don't
+      // add a second one.
+      if (host.querySelector('.' + namespace + '_rubric_fullpoints')) {
         return;
       }
 
       var wrapper = D.createElement('div');
-      wrapper.style.cssText = 'display:flex;align-items:center;margin-left:0.5rem;';
+      if (useWrapContainer) {
+        // Gaps on the wrapping container space the button from the badge
+        // horizontally when side-by-side, and vertically when wrapped,
+        // without leaving a stray indent on the wrapped line.
+        wrapContainer.style.columnGap = '0.5rem';
+        wrapContainer.style.rowGap = '0.5rem';
+        wrapper.style.cssText = 'display:flex;align-items:center;max-width:100%;';
+      } else {
+        // Fallback if Canvas changes the structure: make the badge row
+        // itself wrap.
+        row.style.flexWrap = 'wrap';
+        row.style.rowGap = '0.5rem';
+        wrapper.style.cssText = 'display:flex;align-items:center;margin-left:0.5rem;max-width:100%;';
+      }
 
       var btn = D.createElement('button');
       btn.type = 'button';
@@ -3214,8 +3241,8 @@ function stopCanvasFromRenamingLTI() {
       // Height matches the 3rem Instructor Score badge it sits beside.
       btn.style.cssText =
         'display:inline-flex;align-items:center;justify-content:center;' +
-        'box-sizing:border-box;height:3rem;padding:0 1rem;' +
-        'border:none;border-radius:0.35rem;white-space:nowrap;' +
+        'box-sizing:border-box;min-height:3rem;max-width:100%;padding:0.5rem 1rem;' +
+        'border:none;border-radius:0.35rem;white-space:normal;text-align:center;' +
         'background-color:var(--ic-brand-button--primary-bgd, #4a90e2);' +
         'color:var(--ic-brand-button--primary-text, #ffffff);' +
         'font-size:1rem;line-height:1;font-weight:bold;cursor:pointer;';
@@ -3245,7 +3272,11 @@ function stopCanvasFromRenamingLTI() {
       });
 
       wrapper.appendChild(btn);
-      row.insertBefore(wrapper, badgeItem.nextSibling);
+      if (useWrapContainer) {
+        wrapContainer.insertBefore(wrapper, rowItem.nextSibling);
+      } else {
+        row.insertBefore(wrapper, badgeItem.nextSibling);
+      }
     });
   }
 
