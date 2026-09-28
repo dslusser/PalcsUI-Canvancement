@@ -47,6 +47,19 @@ A separate space for release notes, both structured and unstructured.
     - Moved the button into Canvas's own wrapping flex container one level up, so it sits beside the Instructor Score badge when there's room and drops to its own line when there isn't
     - As a last resort on very narrow panels, the button's text now wraps and the button grows taller, instead of being cut off
 
+- v5.5.3
+  - Made the SpeedGrader shortcode replacement a little more robust: saving and restoring the cursor position around the text swap is now best-effort, so if TinyMCE fails to place or find the cursor bookmark, the shortcode replacement still happens instead of silently aborting
+    - This was originally intended to fix the plain-text paste shortcode bug, but it turned out not to be the cause. Kept because it's harmless and prevents a different potential silent failure. The actual fix is in v5.5.4
+
+- v5.5.4
+  - Fixed [[StudentName]] and [[LessonName]] shortcodes not being replaced when the comment text was pasted in as plain text
+    - Root cause: plain-text paste goes through the browser's native paste handling instead of TinyMCE's paste plugin, and it can wrap pieces of a line in separate spans, e.g. <span>Hi [[</span><span>StudentName</span><span>]],</span>
+    - The text looks normal in the comment box, but the HTML the replacement runs against has tags in the middle of the shortcode, so the old regex never matched. Typing or pasting rich text puts the whole line in one <p>, which is why those always worked
+  - Shortcode matching now allows HTML tags between any characters of the shortcode, since the split can land anywhere, even between the two brackets
+    - Any tags inside the match are kept in order after the replacement text rather than deleted, so the markup never ends up unbalanced (e.g. an orphaned </span>)
+    - Uses a function replacer, so a $ in a student or lesson name is inserted literally instead of being treated as a special replacement pattern
+  - Added two helpers, sgShortCodeRegex() and sgReplaceShortCode(), used by all three shortcode paths (the 🤓 icon, the 📄 icon, and the automatic replacement before submitting or switching students)
+
 ### [palcschool-rc-entry.user.js](https://github.com/dslusser/PalcsUI-Canvancement/raw/master/install/palcschool-rc-entry.user.js)
 - v3.1.0
   - Creating this script as an update to [palcschool-rce.user.js](https://github.com/dslusser/PalcsUI-Canvancement/raw/master/install/palcschool-rce.user.js) which will be deprecated in the future.

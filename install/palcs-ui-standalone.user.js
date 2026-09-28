@@ -7,7 +7,7 @@
 // @match         https://*.instructure.com/courses/*/quizzes/*/history?*
 // @match         https://*.instructure.com/*
 // @noframes
-// @version       5.5.2
+// @version       5.5.4
 // @grant         none
 // @updateURL     https://github.com/dslusser/PalcsUI-Canvancement/raw/master/install/palcs-ui-standalone.user.js
 // @downloadURL   https://github.com/dslusser/PalcsUI-Canvancement/raw/master/install/palcs-ui-standalone.user.js
@@ -2684,6 +2684,72 @@ function addSgStudentNameGreeting() {
     editor.getBody().dispatchEvent(new Event('input', { 'bubbles': true }));
   }
 
+  // Builds a regex for a [[ShortCode]] that still matches when the text is
+  // split across HTML elements. Plain-text paste goes through the browser's
+  // native contenteditable paste rather than TinyMCE's paste plugin, and
+  // that can wrap pieces of a line in separate spans, e.g.
+  //   <span>Hi [[</span><span>StudentName</span><span>]],</span>
+  // The visible text is fine, but the serialized HTML the replacement runs
+  // against has tags in the middle of the short code, so the old
+  // /\[{2}StudentName\]{2}/ never matched and nothing was replaced. Typing
+  // or rich-text paste produces one unbroken text run inside a <p>, which
+  // is why those always worked. The split can land anywhere (even between
+  // the two brackets), so zero or more tags are allowed between every
+  // character.
+  function sgShortCodeRegex(name) {
+    var tagGap = '(?:<[^>]*>)*';
+    var chars = ('[[' + name + ']]').split('').map(function(c) {
+      return c.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    });
+    return new RegExp(chars.join(tagGap), 'g');
+  }
+
+  // Replaces every occurrence of a (possibly tag-split) short code in html.
+  // Any tags captured inside the match are kept, in order, after the
+  // replacement text rather than deleted - dropping them could leave the
+  // markup unbalanced (e.g. an orphaned </span>). Keeping them only ever
+  // leaves an empty span behind, which TinyMCE typically strips. A function
+  // replacer is used so a "$" in a name or lesson title isn't interpreted
+  // as a replacement pattern.
+  function sgReplaceShortCode(html, name, value) {
+    return html.replace(sgShortCodeRegex(name), function(match) {
+      var tags = match.match(/<[^>]*>/g) || [];
+      return value + tags.join('');
+    });
+  }
+
+  // Swaps in newContent and puts the cursor back where it was, best-effort.
+  // getBookmark(2, true)/moveToBookmark rely on inserting/finding marker
+  // spans around the current selection, which assumes a fairly ordinary
+  // DOM shape near the cursor. Plain-text paste usually lands via the
+  // browser's native contenteditable paste handling rather than TinyMCE's
+  // own paste plugin - that's what produces the raw <div>/<br> markup
+  // instead of the <p> markup typing or rich-text paste produces - and
+  // that shape isn't always something the bookmark can be placed in or
+  // found in again. When getBookmark() or moveToBookmark() throws there,
+  // setContent() must still run: losing precise cursor position is a
+  // minor annoyance, but skipping the replacement (the previous behavior,
+  // when the throw happened before setContent and aborted the whole
+  // function) left the literal [[StudentName]]/[[LessonName]] text in the
+  // comment.
+  function sgReplaceEditorContentPreservingCursor(editor, newContent) {
+    var bookmark = null;
+    try {
+      bookmark = editor.selection.getBookmark(2, true);
+    } catch (error) {
+      bookmark = null;
+    }
+    editor.setContent(newContent);
+    if (bookmark) {
+      try {
+        editor.selection.moveToBookmark(bookmark);
+      } catch (error) {
+        // Cursor restore failed; content is already replaced, so just
+        // leave the cursor wherever setContent() put it.
+      }
+    }
+  }
+
   function replaceSgStudentNameShortCode() {
     return new Promise((resolve, reject) => {
       try {
@@ -2692,16 +2758,13 @@ function addSgStudentNameGreeting() {
           var editor = sgCommentEditor();
           if (editor) {
             var content = editor.getContent();
-            var regex = /(\[{2}StudentName\]{2})/gm;
-            var newContent = content.replace(regex, studentFirstName);
+            var newContent = sgReplaceShortCode(content, 'StudentName', studentFirstName);
             // Only touch the editor if the short code was actually present.
             // An unconditional setContent() call - even with unchanged
             // content - fires TinyMCE's change event, which Canvas's new
             // "Comment Drafts" feature hooks to auto-save a draft.
             if (newContent !== content) {
-              var bookmark = editor.selection.getBookmark(2, true);
-              editor.setContent(newContent);
-              editor.selection.moveToBookmark(bookmark);
+              sgReplaceEditorContentPreservingCursor(editor, newContent);
             }
           }
         }
@@ -2720,12 +2783,9 @@ function addSgStudentNameGreeting() {
           var editor = sgCommentEditor();
           if (editor) {
             var content = editor.getContent();
-            var regex = /(\[{2}LessonName\]{2})/gm;
-            var newContent = content.replace(regex, lessonName);
+            var newContent = sgReplaceShortCode(content, 'LessonName', lessonName);
             if (newContent !== content) {
-              var bookmark = editor.selection.getBookmark(2, true);
-              editor.setContent(newContent);
-              editor.selection.moveToBookmark(bookmark);
+              sgReplaceEditorContentPreservingCursor(editor, newContent);
             }
           }
         }
@@ -2750,13 +2810,12 @@ function addSgStudentNameGreeting() {
           var editor = sgCommentEditor();
           if (editor) {
             var content = editor.getContent();
-            var newContent = content
-              .replace(/(\[{2}StudentName\]{2})/gm, sgStudentFirstName())
-              .replace(/(\[{2}LessonName\]{2})/gm, sgAssignmentName());
+            var newContent = sgReplaceShortCode(
+              sgReplaceShortCode(content, 'StudentName', sgStudentFirstName()),
+              'LessonName', sgAssignmentName()
+            );
             if (newContent !== content) {
-              var bookmark = editor.selection.getBookmark(2, true);
-              editor.setContent(newContent);
-              editor.selection.moveToBookmark(bookmark);
+              sgReplaceEditorContentPreservingCursor(editor, newContent);
             }
           }
         }
