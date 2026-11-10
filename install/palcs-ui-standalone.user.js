@@ -7,7 +7,7 @@
 // @match         https://*.instructure.com/courses/*/quizzes/*/history?*
 // @match         https://*.instructure.com/*
 // @noframes
-// @version       5.5.4
+// @version       5.5.5
 // @grant         none
 // @updateURL     https://github.com/dslusser/PalcsUI-Canvancement/raw/master/install/palcs-ui-standalone.user.js
 // @downloadURL   https://github.com/dslusser/PalcsUI-Canvancement/raw/master/install/palcs-ui-standalone.user.js
@@ -501,7 +501,16 @@
         sgObserveAndInstall('[data-testid="graded-students-count"]', 'data-palcsui-update-observer-installed', function(src) {
           var observer = new MutationObserver(function() {
             if (advanceUser && advanceSrc) {
-              nextUser();
+              if (advanceSrc === 'rubric') {
+                // Canvas (Nov 2026) now shows a "Your rubric assessment is
+                // not saved" dialog if you change students before it has
+                // finished refreshing the rubric after a save. The graded
+                // count updates ~300ms before that refresh lands, so wait
+                // for the grading panel to settle before advancing.
+                rubricSettleThenNext();
+              } else {
+                nextUser();
+              }
             }
           });
           observer.observe(src, {
@@ -829,6 +838,69 @@
                 console.error("Error processing events:", error);
             });
       }
+    }
+
+    var sgRubricAdvancePending = false;
+    function rubricSettleThenNext() {
+      if (sgRubricAdvancePending) {
+        return;
+      }
+      sgRubricAdvancePending = true;
+      // Hold off nextUser() (other observers check advanceUser) until the
+      // panel is quiet.
+      advanceUser = false;
+      var panel = document.querySelector('[data-testid="speedgrader-grading-panel"]') || document.body;
+      var quietMs = 200, maxMs = 3000, start = Date.now(), quietTimer = null, maxTimer = null;
+      var observer = new MutationObserver(function() {
+        clearTimeout(quietTimer);
+        quietTimer = setTimeout(finish, quietMs);
+      });
+      function finish() {
+        clearTimeout(quietTimer);
+        clearTimeout(maxTimer);
+        observer.disconnect();
+        sgRubricAdvancePending = false;
+        advanceUser = true;
+        nextUser();
+        sgAutoConfirmRubricUnsavedDialog();
+      }
+      observer.observe(panel, { childList: true, subtree: true, characterData: true, attributes: true });
+      quietTimer = setTimeout(finish, quietMs);
+      maxTimer = setTimeout(finish, maxMs);
+    }
+
+    // Safety net: the rubric was just saved by us, so if Canvas still shows
+    // the "not saved" dialog right after our auto-advance, choose
+    // "Save and continue" (re-saves the same scores, then advances).
+    function sgAutoConfirmRubricUnsavedDialog() {
+      function findBtn() {
+        var btn = document.querySelector('[data-testid="rubric-unsaved-save-and-continue-button"]');
+        if (btn) {
+          return btn;
+        }
+        var keep = document.querySelector('[data-testid="rubric-unsaved-keep-editing-button"]');
+        if (!keep) {
+          return null;
+        }
+        var root = keep.closest('[role="dialog"]') || keep.parentNode.parentNode;
+        var buttons = root ? root.querySelectorAll('button') : [];
+        for (var i = 0; i < buttons.length; i++) {
+          if (/save and continue/i.test(buttons[i].textContent)) {
+            return buttons[i];
+          }
+        }
+        return null;
+      }
+      var tries = 0;
+      var poll = setInterval(function() {
+        var btn = findBtn();
+        if (btn) {
+          clearInterval(poll);
+          btn.click();
+        } else if (++tries > 15) {
+          clearInterval(poll);
+        }
+      }, 100);
     }
 
     function nextUser() {

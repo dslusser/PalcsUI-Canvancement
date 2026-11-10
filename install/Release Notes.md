@@ -60,6 +60,13 @@ A separate space for release notes, both structured and unstructured.
     - Uses a function replacer, so a $ in a student or lesson name is inserted literally instead of being treated as a special replacement pattern
   - Added two helpers, sgShortCodeRegex() and sgReplaceShortCode(), used by all three shortcode paths (the 🤓 icon, the 📄 icon, and the automatic replacement before submitting or switching students)
 
+- v5.5.5
+  - Fixed the rubric → (save rubric and advance) button triggering Canvas's new "Your rubric assessment is not saved" dialog when moving to the next student
+    - Root cause: Canvas now checks for unsaved rubric changes before switching students. The rubric save itself succeeded, but the graded-students count updates about 300ms before Canvas finishes refreshing the rubric after the save. The script advanced the moment that count changed, so Canvas still saw the rubric as unsaved and showed the dialog
+    - After a rubric save, the script now waits until the grading panel has had no DOM changes for 200ms (capped at 3 seconds) before advancing to the next student
+    - Added a safety net: if the "not saved" dialog still appears right after an auto-advance, the script clicks "Save and continue" for you. This re-saves the same scores, so it's harmless
+    - Added two helpers, rubricSettleThenNext() and sgAutoConfirmRubricUnsavedDialog(). Only the rubric advance path uses them; comment and grade-box advancing are unchanged
+
 ### [palcschool-rc-entry.user.js](https://github.com/dslusser/PalcsUI-Canvancement/raw/master/install/palcschool-rc-entry.user.js)
 - v3.1.0
   - Creating this script as an update to [palcschool-rce.user.js](https://github.com/dslusser/PalcsUI-Canvancement/raw/master/install/palcschool-rce.user.js) which will be deprecated in the future.
